@@ -1462,50 +1462,87 @@ async function processFile(file) {
   const queueId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   addToQueue(queueId, file.name, 'uploading');
   
+  const mimeType = file.type || getMimeType(file.name);
+  
   try {
-    // Step 1: Get upload URL
-    updateQueueStatus(queueId, 'Getting upload URL...', 'processing');
-    const token = await getAuthToken();
+    // Step 1: Get JWT token (needed for creating objects)
+    updateQueueStatus(queueId, 'Authenticating...', 'processing');
+    const jwt = await getAuthToken();
+    console.log('Got JWT token');
     
+    // Step 2: Get upload URL (reserves GCS storage)
+    updateQueueStatus(queueId, 'Getting upload URL...', 'processing');
     const uploadRes = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${CONFIG.API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         name: file.name,
-        mime_type: file.type || getMimeType(file.name)
+        mime_type: mimeType
       })
     });
     
     if (!uploadRes.ok) {
       const errText = await uploadRes.text();
-      console.error('Upload URL error:', uploadRes.status, errText);
-      throw new Error(`Upload URL failed: ${uploadRes.status}`);
+      throw new Error(`Upload URL failed: ${uploadRes.status} - ${errText}`);
     }
     
-    const { url: uploadUrl, id: objectId } = await uploadRes.json();
-    console.log('Got upload URL, object ID:', objectId);
+    const uploadData = await uploadRes.json();
+    console.log('Got upload URL, GCS path:', uploadData.id);
     
-    // Step 2: Upload to GCS
-    updateQueueStatus(queueId, 'Uploading...', 'processing');
-    const putRes = await fetch(uploadUrl, {
+    // Step 3: Upload file to GCS
+    updateQueueStatus(queueId, 'Uploading file...', 'processing');
+    const putRes = await fetch(uploadData.url, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type || getMimeType(file.name) },
+      headers: { 'Content-Type': mimeType },
       body: file
     });
     
-    if (!putRes.ok) throw new Error('File upload failed');
-    console.log('File uploaded to content library, ID:', objectId);
+    if (!putRes.ok) {
+      const errText = await putRes.text();
+      throw new Error(`GCS upload failed: ${putRes.status} - ${errText}`);
+    }
+    console.log('File uploaded to GCS');
     
-    // Step 3: Add to selected collection (if one is selected)
+    // Step 4: Create object in Vertesia (THIS IS THE KEY STEP!)
+    updateQueueStatus(queueId, 'Creating object...', 'processing');
+    const createRes = await fetch(`${CONFIG.API_BASE}/objects`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: file.name,
+        content: {
+          source: uploadData.id,  // GCS path from step 2
+          type: mimeType,
+          name: file.name
+        }
+      })
+    });
+    
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      throw new Error(`Create object failed: ${createRes.status} - ${errText}`);
+    }
+    
+    const obj = await createRes.json();
+    console.log('Object created! ID:', obj.id);
+    
+    // Step 5: Add to selected collection (if one is selected)
     if (selectedCollection) {
       updateQueueStatus(queueId, 'Adding to collection...', 'processing');
       try {
-        await apiAuth(`/collections/${selectedCollection.id}/members`, {
+        await fetch(`${CONFIG.API_BASE}/collections/${selectedCollection.id}/members`, {
           method: 'POST',
-          body: JSON.stringify({ id: objectId })
+          headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ id: obj.id })
         });
         console.log('Added to collection:', selectedCollection.name);
       } catch (e) {
@@ -1515,7 +1552,7 @@ async function processFile(file) {
     
     // Done!
     updateQueueStatus(queueId, 'Uploaded', 'complete');
-    showToast(`${file.name} uploaded`, 'success');
+    showToast(`${file.name} uploaded (ID: ${obj.id})`, 'success');
     
     // Refresh to show new document
     collectionMembers = {};

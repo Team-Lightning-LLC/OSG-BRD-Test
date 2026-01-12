@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OSG · Document Processing</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
       --primary: #0d2137;
@@ -956,8 +955,7 @@
 const CONFIG = {
   API_BASE: 'https://api.vertesia.io/api/v1',
   AUTH_BASE: 'https://api.vertesia.io',
-  API_KEY: 'sk-cf3c2d29bc38bfee2ae95bf107cb9046',
-  INTERACTION: 'DocumentProcessing'
+  API_KEY: 'sk-cf3c2d29bc38bfee2ae95bf107cb9046'
 };
 
 // ===== STATE =====
@@ -967,7 +965,6 @@ let collections = [];
 let allDocuments = [];
 let selectedCollection = null;
 let collectionMembers = {}; // collectionId -> [docIds]
-let processingJobs = [];
 let menuTargetCollection = null;
 
 // Persisted state
@@ -1126,7 +1123,6 @@ function renderCollections() {
     const isActive = selectedCollection?.id === col.id;
     const isPinned = pinnedCollections.has(col.id);
     const isComplete = completedCollections.has(col.id);
-    const jobs = processingJobs.filter(j => j.collectionId === col.id && j.status === 'processing');
     
     html += `
       <div class="collection-card ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}" 
@@ -1146,7 +1142,6 @@ function renderCollections() {
         <div class="card-meta">
           <span class="card-status ${isComplete ? 'complete' : 'active'}">${isComplete ? 'Complete' : 'Active'}</span>
         </div>
-        ${jobs.length > 0 ? `<span class="card-badge processing">${jobs.length} processing</span>` : ''}
       </div>
     `;
   });
@@ -1468,202 +1463,91 @@ async function processFile(file) {
   addToQueue(queueId, file.name, 'uploading');
   
   try {
-    const ext = file.name.split('.').pop().toLowerCase();
-    const isTextFile = ['txt', 'md', 'csv', 'json', 'xml', 'html', 'css', 'js'].includes(ext);
+    // Step 1: Get upload URL
+    updateQueueStatus(queueId, 'Getting upload URL...', 'processing');
+    const token = await getAuthToken();
     
-    // Step 1: Read file content
-    updateQueueStatus(queueId, 'Reading file...', 'processing');
-    let fileContent = '';
+    const uploadRes = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: file.name,
+        mime_type: file.type || getMimeType(file.name)
+      })
+    });
     
-    if (isTextFile) {
-      // Direct text read
-      fileContent = await file.text();
-      console.log(`Read ${fileContent.length} chars from ${file.name}`);
-    } else if (ext === 'docx') {
-      // For DOCX, we'll extract what we can (basic approach)
-      updateQueueStatus(queueId, 'Extracting text from DOCX...', 'processing');
-      fileContent = await extractDocxText(file);
-      console.log(`Extracted ${fileContent.length} chars from DOCX`);
-    } else if (ext === 'pdf') {
-      // For PDF, note limitation
-      fileContent = `[PDF file: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n\nNote: PDF text extraction not available in browser. Please process manually or convert to text.`;
-      console.log('PDF file - limited processing');
-    } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-      // For images, note limitation
-      fileContent = `[Image file: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n\nNote: Image processing not available. Please describe the image content or use OCR.`;
-      console.log('Image file - limited processing');
-    } else {
-      // Try to read as text anyway
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      console.error('Upload URL error:', uploadRes.status, errText);
+      throw new Error(`Upload URL failed: ${uploadRes.status}`);
+    }
+    
+    const { url: uploadUrl, id: objectId } = await uploadRes.json();
+    console.log('Got upload URL, object ID:', objectId);
+    
+    // Step 2: Upload to GCS
+    updateQueueStatus(queueId, 'Uploading...', 'processing');
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || getMimeType(file.name) },
+      body: file
+    });
+    
+    if (!putRes.ok) throw new Error('File upload failed');
+    console.log('File uploaded to content library, ID:', objectId);
+    
+    // Step 3: Add to selected collection (if one is selected)
+    if (selectedCollection) {
+      updateQueueStatus(queueId, 'Adding to collection...', 'processing');
       try {
-        fileContent = await file.text();
-        console.log(`Read ${fileContent.length} chars from ${file.name} (unknown type)`);
+        await apiAuth(`/collections/${selectedCollection.id}/members`, {
+          method: 'POST',
+          body: JSON.stringify({ id: objectId })
+        });
+        console.log('Added to collection:', selectedCollection.name);
       } catch (e) {
-        fileContent = `[Binary file: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n\nNote: Unable to extract text content.`;
+        console.warn('Could not add to collection:', e.message);
       }
     }
     
-    // Truncate if too large (keep first ~50KB for context limits)
-    const maxChars = 50000;
-    if (fileContent.length > maxChars) {
-      fileContent = fileContent.substring(0, maxChars) + `\n\n... [TRUNCATED - file was ${fileContent.length} chars, showing first ${maxChars}]`;
-      console.log('Content truncated to', maxChars, 'chars');
+    // Done!
+    updateQueueStatus(queueId, 'Uploaded', 'complete');
+    showToast(`${file.name} uploaded`, 'success');
+    
+    // Refresh to show new document
+    collectionMembers = {};
+    await loadDocuments();
+    if (selectedCollection) {
+      await loadCollectionMembers(selectedCollection.id);
+      renderLibrary();
     }
     
-    // Step 2: Process through agent with content directly in prompt
-    updateQueueStatus(queueId, 'Processing with AI...', 'processing');
-    await runDocumentProcessing(file.name, fileContent, queueId);
-    
   } catch (err) {
-    console.error('Process error:', err);
+    console.error('Upload error:', err);
     updateQueueStatus(queueId, 'Error: ' + err.message, 'error');
     showToast(`Failed: ${file.name}`, 'error');
   }
 }
 
-// Basic DOCX text extraction (DOCX is a ZIP with XML inside)
-async function extractDocxText(file) {
-  try {
-    const JSZip = window.JSZip;
-    if (!JSZip) {
-      // Fallback if JSZip not loaded
-      return `[DOCX file: ${file.name}]\n\nNote: DOCX extraction requires JSZip library. Content not extracted.`;
-    }
-    
-    const zip = await JSZip.loadAsync(file);
-    const documentXml = await zip.file('word/document.xml')?.async('string');
-    
-    if (!documentXml) {
-      return `[DOCX file: ${file.name}]\n\nNote: Could not find document.xml in DOCX.`;
-    }
-    
-    // Strip XML tags to get plain text
-    const text = documentXml
-      .replace(/<w:p[^>]*>/g, '\n')  // Paragraph breaks
-      .replace(/<w:br[^>]*>/g, '\n') // Line breaks
-      .replace(/<w:tab[^>]*>/g, '\t') // Tabs
-      .replace(/<[^>]+>/g, '')        // Remove all other tags
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#x[0-9A-Fa-f]+;/g, ' ') // Remove hex entities
-      .replace(/\n{3,}/g, '\n\n')    // Collapse multiple newlines
-      .trim();
-    
-    return text || `[DOCX file: ${file.name}]\n\nNote: No text content found.`;
-  } catch (e) {
-    console.error('DOCX extraction error:', e);
-    return `[DOCX file: ${file.name}]\n\nNote: Failed to extract text - ${e.message}`;
-  }
-}
-
-async function runDocumentProcessing(fileName, fileContent, queueId) {
-  const job = {
-    id: queueId,
-    fileName,
-    status: 'processing',
-    collectionId: selectedCollection?.id,
-    collectionName: selectedCollection?.name
+function getMimeType(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const types = {
+    pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    doc: 'application/msword',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xls: 'application/vnd.ms-excel',
+    csv: 'text/csv'
   };
-  processingJobs.push(job);
-  renderCollections();
-  
-  try {
-    const task = `Process the following document:
-
-=== DOCUMENT START ===
-Document Name: ${fileName}
-
-${fileContent}
-=== DOCUMENT END ===
-
-Please:
-1. Identify the client from the document content
-2. Route to the appropriate collection (create if needed)
-3. Update or create the client checklist
-4. Extract all relevant information`;
-
-    console.log('Sending to agent, content length:', fileContent.length);
-    
-    const res = await apiAuth('/execute/async', {
-      method: 'POST',
-      body: JSON.stringify({
-        type: 'conversation',
-        interaction: CONFIG.INTERACTION,
-        data: { task },
-        config: {},
-        interactive: true,
-        max_iterations: 100
-      })
-    });
-    
-    console.log('Processing started:', res);
-    
-    if (res?.runId && res?.workflowId) {
-      pollCompletion(res.workflowId, res.runId, queueId, fileName);
-    } else {
-      throw new Error('No runId returned');
-    }
-  } catch (err) {
-    console.error('Processing error:', err);
-    job.status = 'error';
-    updateQueueStatus(queueId, 'Processing failed: ' + err.message, 'error');
-    renderCollections();
-  }
-}
-
-async function pollCompletion(workflowId, runId, queueId, fileName) {
-  let attempts = 0;
-  const maxAttempts = 120;
-  
-  const poll = setInterval(async () => {
-    attempts++;
-    if (attempts > maxAttempts) {
-      clearInterval(poll);
-      completeProcessing(queueId, fileName, true);
-      return;
-    }
-    
-    try {
-      const status = await api(`/workflows/runs/${workflowId}/${runId}`);
-      const s = (status?.status || '').toLowerCase();
-      console.log('Poll:', s, 'attempt:', attempts);
-      
-      if (['completed', 'success', 'finished', 'done', 'succeeded'].includes(s)) {
-        clearInterval(poll);
-        completeProcessing(queueId, fileName, false);
-      } else if (['failed', 'error', 'cancelled'].includes(s)) {
-        clearInterval(poll);
-        completeProcessing(queueId, fileName, true);
-      }
-    } catch (e) {
-      console.error('Poll error:', e);
-    }
-  }, 5000);
-}
-
-async function completeProcessing(queueId, fileName, isError) {
-  const job = processingJobs.find(j => j.id === queueId);
-  if (job) job.status = isError ? 'error' : 'complete';
-  
-  updateQueueStatus(queueId, isError ? 'Failed' : 'Complete', isError ? 'error' : 'complete');
-  renderCollections();
-  
-  if (!isError) {
-    showToast(`${fileName} processed`, 'success');
-    
-    // Refresh data
-    collectionMembers = {};
-    await loadCollections();
-    await loadDocuments();
-    renderCollections();
-    
-    if (selectedCollection) {
-      await loadCollectionMembers(selectedCollection.id);
-      renderLibrary();
-      await loadChecklist(selectedCollection.id);
-    }
-  }
+  return types[ext] || 'application/octet-stream';
 }
 
 // ===== QUEUE UI =====

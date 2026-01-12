@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSG · Document Processing</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --primary: #0d2137;
+      --primary-light: #1a3a5c;
+      --accent: #2a7d8c;
+      --accent-light: #3a9aad;
+      --accent-soft: #e6f3f5;
+      --ink: #1f2d3d;
+      --muted: #6c7a89;
+      --border: #dde2e8;
+      --bg: #f5f7f9;
+      --card: #ffffff;
+      --success: #28a745;
+      --success-soft: #e8f5e9;
+      --warning: #f0ad4e;
+      --warning-soft: #fef9e8;
+      --shadow: 0 2px 8px rgba(13,33,55,0.08);
+      --shadow-lg: 0 4px 16px rgba(13,33,55,0.12);
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo {
+      width: 48px;
+      height: 48px;
+      background: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--primary);
+    }
+    
+    .brand-text {
+      color: white;
+    }
+    
+    .brand-name {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    
+    .brand-sub {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      font-size: 13px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+    }
+    
+    .status-dot.disconnected {
+      background: #f87171;
+    }
+    
+    /* Main Container */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 32px;
+    }
+    
+    /* Collections Section */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .collections-scroll {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 24px;
+    }
+    
+    .collections-scroll::-webkit-scrollbar {
+      height: 6px;
+    }
+    
+    .collections-scroll::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    
+    /* Collection Card */
+    .collection-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      min-width: 180px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    
+    .collection-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow);
+    }
+    
+    .collection-card.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    
+    .collection-card.new {
+      border-style: dashed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100px;
+      color: var(--muted);
+    }
+    
+    .collection-card.new:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    
+    .collection-card.new svg {
+      margin-bottom: 8px;
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    
+    .card-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent-soft);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    
+    .card-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+    
+    .card-star {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      color: var(--warning);
+    }
+    
+    .card-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    
+    .card-status {
+      font-weight: 500;
+    }
+    
+    .card-status.active { color: var(--accent); }
+    .card-status.complete { color: var(--success); }
+    
+    .card-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+    
+    .card-badge.ready {
+      background: var(--success-soft);
+      color: var(--success);
+    }
+    
+    .card-badge.processing {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+    }
+    
+    /* Panel */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .panel-body {
+      padding: 20px;
+    }
+    
+    /* Checklist Area */
+    .checklist-area {
+      min-height: 400px;
+    }
+    
+    .checklist-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      color: var(--muted);
+      text-align: center;
+    }
+    
+    .checklist-empty svg {
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+    
+    .checklist-empty p {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    
+    .checklist-empty small {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+    
+    /* Markdown Rendered Checklist */
+    .checklist-content {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .checklist-content h1 {
+      font-size: 20px;
+      color: var(--primary);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .checklist-content h2 {
+      font-size: 16px;
+      color: var(--ink);
+      margin: 20px 0 12px;
+      padding-left: 12px;
+      border-left: 3px solid var(--accent);
+    }
+    
+    .checklist-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 12px;
+    }
+    
+    .checklist-content th {
+      background: var(--primary);
+      color: white;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+    
+    .checklist-content td {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+    }
+    
+    .checklist-content tr:nth-child(even) {
+      background: var(--bg);
+    }
+    
+    /* Status badges in checklist */
+    .checklist-content td:nth-child(2) {
+      font-weight: 500;
+    }
+    
+    /* Upload Section */
+    .upload-section {
+      margin-bottom: 20px;
+    }
+    
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      background: var(--bg);
+    }
+    
+    .upload-zone:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    
+    .upload-zone svg {
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    
+    .upload-zone p {
+      font-size: 14px;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    
+    .upload-zone small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    .upload-zone input {
+      display: none;
+    }
+    
+    /* Upload Queue */
+    .upload-queue {
+      margin-top: 16px;
+    }
+    
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .queue-item-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-soft);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    
+    .queue-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .queue-item-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .queue-item-status {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    
+    .queue-item-status.processing {
+      color: var(--accent);
+    }
+    
+    .queue-item-status.complete {
+      color: var(--success);
+    }
+    
+    .queue-item-status.error {
+      color: #dc3545;
+    }
+    
+    .queue-item-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .queue-item-check {
+      color: var(--success);
+    }
+    
+    /* Library List */
+    .library-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .library-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    
+    .library-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .library-search {
+      position: relative;
+    }
+    
+    .library-search input {
+      padding: 6px 10px 6px 28px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      width: 140px;
+      background: var(--bg);
+    }
+    
+    .library-search input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: white;
+    }
+    
+    .library-search svg {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+    
+    .library-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .library-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    
+    .library-item:hover {
+      background: var(--bg);
+    }
+    
+    .library-item-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent-soft);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    
+    .library-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .library-item-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .library-item-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    
+    .library-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.3s;
+    }
+    
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    .loading-text {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+    }
+    
+    .toast {
+      background: var(--primary);
+      color: white;
+      padding: 14px 20px;
+      border-radius: 8px;
+      margin-top: 8px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease;
+    }
+    
+    .toast.success {
+      background: var(--success);
+    }
+    
+    .toast.error {
+      background: #dc3545;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* Button */
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-light);
+    }
+    
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+    
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    
+    /* Processing Jobs Panel */
+    .jobs-panel {
+      margin-bottom: 20px;
+      background: var(--warning-soft);
+      border: 1px solid #f0e6c8;
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+    
+    .jobs-panel.hidden {
+      display: none;
+    }
+    
+    .jobs-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8a6d14;
+      margin-bottom: 8px;
+    }
+    
+    .jobs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .job-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #6b5a10;
+    }
+    
+    .job-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #d4c89b;
+      border-top-color: #8a6d14;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">Connecting to Vertesia...</div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-section">
+      <div class="logo">OSG</div>
+      <div class="brand-text">
+        <div class="brand-name">Document Processing</div>
+        <div class="brand-sub">Client Onboarding Automation</div>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connected</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Collections Section -->
+    <div class="section-header">
+      <h2 class="section-title">Collections</h2>
+    </div>
+    
+    <div class="collections-scroll" id="collectionsScroll">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- Left: Checklist Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title" id="collectionTitle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Select a Collection
+          </h3>
+          <button class="btn btn-secondary" id="refreshBtn" onclick="refreshChecklist()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div class="panel-body checklist-area" id="checklistArea">
+          <div class="checklist-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            <p>Select a collection to view its checklist</p>
+            <small>Checklists are auto-generated from uploaded documents</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Upload & Library Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload Documents
+          </h3>
+        </div>
+        <div class="panel-body">
+          <!-- Processing Jobs -->
+          <div class="jobs-panel hidden" id="jobsPanel">
+            <div class="jobs-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Processing Documents
+            </div>
+            <div class="jobs-list" id="jobsList">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Upload Zone -->
+          <div class="upload-section">
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p>Click to upload or drag files here</p>
+              <small>PDF, DOCX, TXT, Images supported</small>
+              <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv">
+            </div>
+            
+            <!-- Upload Queue -->
+            <div class="upload-queue" id="uploadQueue">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Library Section -->
+          <div class="library-section">
+            <div class="library-header">
+              <h4 class="library-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Collection Library
+              </h4>
+              <div class="library-search">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" placeholder="Search..." id="librarySearch" oninput="filterLibrary(this.value)">
+              </div>
+            </div>
+            <div class="library-list" id="libraryList">
+              <div class="library-empty">No documents yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== VERTESIA API CONFIGURATION =====
+const CONFIG = {
+  API_BASE: 'https://api.vertesia.io/api/v1',
+  AUTH_BASE: 'https://api.vertesia.io',
+  API_KEY: 'sk-cf3c2d29bc38bfee2ae95bf107cb9046',
+  INTERACTION: 'DocumentProcessing'
+};
+
+// ===== STATE =====
+let jwtToken = null;
+let tokenExpiry = null;
+let collections = [];
+let allDocuments = [];
+let selectedCollection = null;
+let processingJobs = [];
+
+// ===== API HELPERS =====
+async function getAuthToken() {
+  if (jwtToken && tokenExpiry && Date.now() < tokenExpiry) {
+    return jwtToken;
+  }
+  
+  console.log('Fetching JWT token...');
+  const response = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
+  });
+  
+  if (!response.ok) throw new Error(`Auth failed: ${response.status}`);
+  
+  const data = await response.json();
+  jwtToken = data.token;
+  tokenExpiry = Date.now() + (50 * 60 * 1000); // 50 minutes
+  return jwtToken;
+}
+
+async function apiCall(endpoint, options = {}) {
+  const response = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
+    headers: {
+      'Authorization': `Bearer ${CONFIG.API_KEY}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    ...options
+  });
+  
+  if (!response.ok) {
+    const error = await response.text().catch(() => '');
+    console.error('API Error:', response.status, error);
+    throw new Error(`API ${response.status}`);
+  }
+  
+  if (response.status === 204) return null;
+  const text = await response.text();
+  if (!text) return null;
+  return JSON.parse(text);
+}
+
+async function apiCallWithAuth(endpoint, options = {}) {
+  const token = await getAuthToken();
+  return fetch(`${CONFIG.API_BASE}${endpoint}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    ...options
+  }).then(async r => {
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    const text = await r.text();
+    return text ? JSON.parse(text) : null;
+  });
+}
+
+// ===== INITIALIZATION =====
+document.addEventListener('DOMContentLoaded', async () => {
+  setupDragDrop();
+  setupFileInput();
+  
+  try {
+    setLoadingText('Loading collections...');
+    await loadCollections();
+    setLoadingText('Loading documents...');
+    await loadDocuments();
+    setStatus(true);
+    renderCollections();
+    renderLibrary();
+  } catch (error) {
+    console.error('Init failed:', error);
+    setStatus(false);
+    showToast('Failed to connect to Vertesia', 'error');
+  }
+  
+  hideLoading();
+});
+
+function setLoadingText(text) {
+  document.getElementById('loadingText').textContent = text;
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+function setStatus(connected) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (connected) {
+    dot.classList.remove('disconnected');
+    text.textContent = 'Connected';
+  } else {
+    dot.classList.add('disconnected');
+    text.textContent = 'Disconnected';
+  }
+}
+
+// ===== DATA LOADING =====
+async function loadCollections() {
+  const data = await apiCall('/collections/search', {
+    method: 'POST',
+    body: JSON.stringify({ dynamic: false, status: 'active', limit: 100 })
+  });
+  collections = data || [];
+  console.log(`Loaded ${collections.length} collections`);
+}
+
+async function loadDocuments() {
+  const data = await apiCall('/objects?limit=500&offset=0');
+  allDocuments = (Array.isArray(data) ? data : data.objects || [])
+    .filter(o => o.content?.source)
+    .map(o => ({
+      id: o.id,
+      name: o.name || 'Untitled',
+      type: o.properties?.document_type || 'Document',
+      date: formatDate(o.created_at),
+      source: o.content?.source
+    }));
+  console.log(`Loaded ${allDocuments.length} documents`);
+}
+
+async function loadCollectionMembers(collectionId) {
+  const members = await apiCall(`/collections/${collectionId}/members?limit=1000`);
+  return members || [];
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ===== RENDERING =====
+function renderCollections() {
+  const container = document.getElementById('collectionsScroll');
+  
+  // New Collection card
+  let html = `
+    <div class="collection-card new" onclick="createCollection()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span style="font-size:13px;font-weight:500">New Collection</span>
+    </div>
+  `;
+  
+  // Collection cards
+  collections.forEach(col => {
+    const isActive = selectedCollection?.id === col.id;
+    const jobsForCol = processingJobs.filter(j => j.collectionId === col.id && j.status === 'processing');
+    
+    html += `
+      <div class="collection-card ${isActive ? 'active' : ''}" onclick="selectCollection('${col.id}')">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="card-name" title="${col.name}">${col.name}</div>
+        </div>
+        <div class="card-meta">
+          <span class="card-status active">Active</span>
+        </div>
+        ${jobsForCol.length > 0 ? `<span class="card-badge processing">${jobsForCol.length} processing</span>` : ''}
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function renderLibrary() {
+  const container = document.getElementById('libraryList');
+  const search = document.getElementById('librarySearch').value.toLowerCase();
+  
+  const filtered = allDocuments.filter(doc => {
+    if (!search) return true;
+    return doc.name.toLowerCase().includes(search) || doc.type.toLowerCase().includes(search);
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="library-empty">No documents found</div>';
+    return;
+  }
+  
+  container.innerHTML = filtered.map(doc => `
+    <div class="library-item" onclick="viewDocument('${doc.id}')">
+      <div class="library-item-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="library-item-info">
+        <div class="library-item-name" title="${doc.name}">${doc.name}</div>
+        <div class="library-item-meta">${doc.date} · ${doc.type}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterLibrary(value) {
+  renderLibrary();
+}
+
+function updateJobsPanel() {
+  const panel = document.getElementById('jobsPanel');
+  const list = document.getElementById('jobsList');
+  
+  const activeJobs = processingJobs.filter(j => j.status === 'processing');
+  
+  if (activeJobs.length === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+  
+  panel.classList.remove('hidden');
+  list.innerHTML = activeJobs.map(job => `
+    <div class="job-item">
+      <div class="job-spinner"></div>
+      <span>${job.fileName} → ${job.collectionName || 'Auto-routing'}</span>
+    </div>
+  `).join('');
+}
+
+// ===== COLLECTION ACTIONS =====
+async function selectCollection(collectionId) {
+  selectedCollection = collections.find(c => c.id === collectionId);
+  renderCollections();
+  
+  document.getElementById('collectionTitle').innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    ${selectedCollection.name}
+  `;
+  
+  await loadChecklist(collectionId);
+}
+
+async function loadChecklist(collectionId) {
+  const checklistArea = document.getElementById('checklistArea');
+  checklistArea.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted)">
+      <div class="loading-spinner" style="width:24px;height:24px;border-width:2px"></div>
+      <span style="margin-left:12px">Loading checklist...</span>
+    </div>
+  `;
+  
+  try {
+    // Get collection members
+    const members = await loadCollectionMembers(collectionId);
+    
+    // Find checklist document (markdown file with "Checklist" in name)
+    let checklistDoc = null;
+    for (const member of members) {
+      const doc = allDocuments.find(d => d.id === member.id);
+      if (doc && (doc.name.toLowerCase().includes('checklist') || doc.source?.endsWith('.md'))) {
+        checklistDoc = doc;
+        break;
+      }
+    }
+    
+    if (checklistDoc) {
+      // Fetch and render checklist content
+      const content = await fetchDocumentContent(checklistDoc.source);
+      renderChecklist(content);
+    } else {
+      checklistArea.innerHTML = `
+        <div class="checklist-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          <p>No checklist found for this collection</p>
+          <small>Upload documents to auto-generate a checklist</small>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Failed to load checklist:', error);
+    checklistArea.innerHTML = `
+      <div class="checklist-empty">
+        <p style="color:#dc3545">Failed to load checklist</p>
+        <small>${error.message}</small>
+      </div>
+    `;
+  }
+}
+
+async function fetchDocumentContent(source) {
+  // Get download URL
+  const { url } = await apiCall('/objects/download-url', {
+    method: 'POST',
+    body: JSON.stringify({ file: source, format: 'original' })
+  });
+  
+  // Fetch content
+  const response = await fetch(url);
+  return await response.text();
+}
+
+function renderChecklist(markdown) {
+  const checklistArea = document.getElementById('checklistArea');
+  
+  // Use marked.js for proper markdown rendering
+  if (typeof marked !== 'undefined') {
+    checklistArea.innerHTML = `<div class="checklist-content">${marked.parse(markdown)}</div>`;
+  } else {
+    // Fallback basic rendering
+    checklistArea.innerHTML = `<div class="checklist-content"><pre>${markdown}</pre></div>`;
+  }
+  
+  // Style status cells
+  checklistArea.querySelectorAll('td').forEach(td => {
+    const text = td.textContent.trim().toLowerCase();
+    if (text === 'complete') {
+      td.style.color = 'var(--success)';
+      td.style.fontWeight = '600';
+    } else if (text === 'incomplete') {
+      td.style.color = '#dc3545';
+    } else if (text === 'partial') {
+      td.style.color = 'var(--warning)';
+    }
+  });
+}
+
+async function refreshChecklist() {
+  if (!selectedCollection) {
+    showToast('Select a collection first', 'error');
+    return;
+  }
+  
+  // Reload documents and checklist
+  await loadDocuments();
+  await loadChecklist(selectedCollection.id);
+  showToast('Checklist refreshed');
+}
+
+async function createCollection() {
+  const name = prompt('Enter collection name:');
+  if (!name || !name.trim()) return;
+  
+  try {
+    const collection = await apiCallWithAuth('/collections', {
+      method: 'POST',
+      body: JSON.stringify({ name: name.trim(), description: '', dynamic: false })
+    });
+    
+    if (collection?.id) {
+      collections.unshift(collection);
+    } else {
+      // Reload collections if ID not returned
+      await loadCollections();
+    }
+    
+    renderCollections();
+    showToast(`Created "${name}"`);
+  } catch (error) {
+    console.error('Failed to create collection:', error);
+    showToast('Failed to create collection', 'error');
+  }
+}
+
+// ===== FILE UPLOAD =====
+function setupDragDrop() {
+  const zone = document.getElementById('uploadZone');
+  
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+    zone.addEventListener(event, e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  });
+  
+  ['dragenter', 'dragover'].forEach(event => {
+    zone.addEventListener(event, () => zone.classList.add('dragover'));
+  });
+  
+  ['dragleave', 'drop'].forEach(event => {
+    zone.addEventListener(event, () => zone.classList.remove('dragover'));
+  });
+  
+  zone.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) handleFiles(files);
+  });
+}
+
+function setupFileInput() {
+  document.getElementById('fileInput').addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) handleFiles(files);
+    e.target.value = ''; // Reset for re-upload of same file
+  });
+}
+
+async function handleFiles(files) {
+  console.log(`Processing ${files.length} files...`);
+  
+  // Process one at a time (sequential)
+  for (const file of files) {
+    await processFile(file);
+  }
+}
+
+async function processFile(file) {
+  const jobId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  // Add to queue UI
+  addToQueue(jobId, file.name, 'uploading');
+  
+  try {
+    // Step 1: Get upload URL
+    updateQueueStatus(jobId, 'Getting upload URL...');
+    const token = await getAuthToken();
+    
+    const uploadUrlResponse = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: file.name,
+        mime_type: file.type || getMimeType(file.name)
+      })
+    });
+    
+    if (!uploadUrlResponse.ok) {
+      throw new Error('Failed to get upload URL');
+    }
+    
+    const { url: uploadUrl, id: objectId } = await uploadUrlResponse.json();
+    console.log('Got upload URL, object ID:', objectId);
+    
+    // Step 2: Upload file to GCS
+    updateQueueStatus(jobId, 'Uploading file...');
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type || getMimeType(file.name)
+      },
+      body: file
+    });
+    
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload file');
+    }
+    
+    console.log('File uploaded successfully');
+    
+    // Step 3: Process document through agent
+    updateQueueStatus(jobId, 'Processing document...');
+    await runDocumentProcessing(objectId, file.name, jobId);
+    
+  } catch (error) {
+    console.error('File processing error:', error);
+    updateQueueStatus(jobId, 'Error: ' + error.message, 'error');
+    showToast(`Failed to process ${file.name}`, 'error');
+  }
+}
+
+function getMimeType(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const types = {
+    'pdf': 'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'doc': 'application/msword',
+    'txt': 'text/plain',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'xls': 'application/vnd.ms-excel',
+    'csv': 'text/csv'
+  };
+  return types[ext] || 'application/octet-stream';
+}
+
+async function runDocumentProcessing(objectId, fileName, queueId) {
+  // Add to processing jobs
+  const job = {
+    id: queueId,
+    objectId,
+    fileName,
+    status: 'processing',
+    collectionId: selectedCollection?.id,
+    collectionName: selectedCollection?.name
+  };
+  processingJobs.push(job);
+  updateJobsPanel();
+  renderCollections();
+  
+  try {
+    // Build task prompt
+    const task = `Process uploaded document with Object ID: ${objectId}
+    
+Document Name: ${fileName}
+
+Please:
+1. Identify the client from the document content
+2. Route to the appropriate collection (create if needed)
+3. Update or create the client checklist
+4. Extract all relevant information`;
+
+    // Execute the interaction
+    const response = await apiCallWithAuth('/execute/async', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'conversation',
+        interaction: CONFIG.INTERACTION,
+        data: { task },
+        config: {},
+        interactive: true,
+        max_iterations: 100
+      })
+    });
+    
+    console.log('Processing started:', response);
+    
+    if (response?.runId && response?.workflowId) {
+      // Poll for completion
+      pollProcessingCompletion(response.workflowId, response.runId, queueId, fileName);
+    } else {
+      throw new Error('No runId in response');
+    }
+    
+  } catch (error) {
+    console.error('Document processing error:', error);
+    job.status = 'error';
+    updateQueueStatus(queueId, 'Processing failed', 'error');
+    updateJobsPanel();
+    renderCollections();
+  }
+}
+
+async function pollProcessingCompletion(workflowId, runId, queueId, fileName) {
+  let attempts = 0;
+  const maxAttempts = 120; // 10 minutes at 5s intervals
+  
+  const poll = setInterval(async () => {
+    attempts++;
+    
+    if (attempts > maxAttempts) {
+      clearInterval(poll);
+      completeProcessing(queueId, fileName, true);
+      return;
+    }
+    
+    try {
+      const status = await apiCall(`/workflows/runs/${workflowId}/${runId}`);
+      const runStatus = (status?.status || '').toLowerCase();
+      
+      console.log('Poll status:', runStatus, 'attempt:', attempts);
+      
+      if (['completed', 'success', 'finished', 'done', 'succeeded'].includes(runStatus)) {
+        clearInterval(poll);
+        completeProcessing(queueId, fileName, false);
+      } else if (['failed', 'error', 'cancelled'].includes(runStatus)) {
+        clearInterval(poll);
+        completeProcessing(queueId, fileName, true);
+      }
+    } catch (e) {
+      console.error('Poll error:', e);
+    }
+  }, 5000);
+}
+
+async function completeProcessing(queueId, fileName, isError) {
+  // Update job status
+  const job = processingJobs.find(j => j.id === queueId);
+  if (job) {
+    job.status = isError ? 'error' : 'complete';
+  }
+  
+  // Update UI
+  updateQueueStatus(queueId, isError ? 'Processing failed' : 'Complete', isError ? 'error' : 'complete');
+  updateJobsPanel();
+  renderCollections();
+  
+  if (!isError) {
+    showToast(`${fileName} processed successfully`, 'success');
+    
+    // Refresh data
+    await loadCollections();
+    await loadDocuments();
+    renderCollections();
+    renderLibrary();
+    
+    // Refresh checklist if collection selected
+    if (selectedCollection) {
+      await loadChecklist(selectedCollection.id);
+    }
+  }
+}
+
+// ===== QUEUE UI =====
+function addToQueue(id, name, status) {
+  const queue = document.getElementById('uploadQueue');
+  const item = document.createElement('div');
+  item.className = 'queue-item';
+  item.id = `queue-${id}`;
+  item.innerHTML = `
+    <div class="queue-item-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="queue-item-info">
+      <div class="queue-item-name">${name}</div>
+      <div class="queue-item-status processing" id="status-${id}">Preparing...</div>
+    </div>
+    <div class="queue-item-spinner" id="spinner-${id}"></div>
+  `;
+  queue.appendChild(item);
+}
+
+function updateQueueStatus(id, status, state = 'processing') {
+  const statusEl = document.getElementById(`status-${id}`);
+  const spinnerEl = document.getElementById(`spinner-${id}`);
+  
+  if (statusEl) {
+    statusEl.textContent = status;
+    statusEl.className = `queue-item-status ${state}`;
+  }
+  
+  if (spinnerEl) {
+    if (state === 'complete') {
+      spinnerEl.outerHTML = `<svg class="queue-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+    } else if (state === 'error') {
+      spinnerEl.outerHTML = `<svg style="color:#dc3545" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+    }
+  }
+}
+
+// ===== UTILITIES =====
+function viewDocument(docId) {
+  const doc = allDocuments.find(d => d.id === docId);
+  if (doc) {
+    // For now, just show toast - could open a viewer modal
+    showToast(`Viewing: ${doc.name}`);
+  }
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    ${type === 'success' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : 
+      type === 'error' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' :
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'}
+    <span>${message}</span>
+  `;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+</script>
+</body>
+</html>

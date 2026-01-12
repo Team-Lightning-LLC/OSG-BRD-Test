@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OSG · Document Processing</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
       --primary: #0d2137;
@@ -1467,50 +1468,50 @@ async function processFile(file) {
   addToQueue(queueId, file.name, 'uploading');
   
   try {
-    // Step 1: Get upload URL
-    updateQueueStatus(queueId, 'Getting upload URL...', 'processing');
-    const token = await getAuthToken();
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isTextFile = ['txt', 'md', 'csv', 'json', 'xml', 'html', 'css', 'js'].includes(ext);
     
-    const uploadRes = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: file.name,
-        mime_type: file.type || getMimeType(file.name)
-      })
-    });
+    // Step 1: Read file content
+    updateQueueStatus(queueId, 'Reading file...', 'processing');
+    let fileContent = '';
     
-    if (!uploadRes.ok) {
-      const errText = await uploadRes.text();
-      console.error('Upload URL error:', uploadRes.status, errText);
-      throw new Error(`Upload URL failed: ${uploadRes.status}`);
+    if (isTextFile) {
+      // Direct text read
+      fileContent = await file.text();
+      console.log(`Read ${fileContent.length} chars from ${file.name}`);
+    } else if (ext === 'docx') {
+      // For DOCX, we'll extract what we can (basic approach)
+      updateQueueStatus(queueId, 'Extracting text from DOCX...', 'processing');
+      fileContent = await extractDocxText(file);
+      console.log(`Extracted ${fileContent.length} chars from DOCX`);
+    } else if (ext === 'pdf') {
+      // For PDF, note limitation
+      fileContent = `[PDF file: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n\nNote: PDF text extraction not available in browser. Please process manually or convert to text.`;
+      console.log('PDF file - limited processing');
+    } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+      // For images, note limitation
+      fileContent = `[Image file: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n\nNote: Image processing not available. Please describe the image content or use OCR.`;
+      console.log('Image file - limited processing');
+    } else {
+      // Try to read as text anyway
+      try {
+        fileContent = await file.text();
+        console.log(`Read ${fileContent.length} chars from ${file.name} (unknown type)`);
+      } catch (e) {
+        fileContent = `[Binary file: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n\nNote: Unable to extract text content.`;
+      }
     }
     
-    const { url: uploadUrl, id: objectId } = await uploadRes.json();
-    console.log('Got upload URL, object ID:', objectId);
+    // Truncate if too large (keep first ~50KB for context limits)
+    const maxChars = 50000;
+    if (fileContent.length > maxChars) {
+      fileContent = fileContent.substring(0, maxChars) + `\n\n... [TRUNCATED - file was ${fileContent.length} chars, showing first ${maxChars}]`;
+      console.log('Content truncated to', maxChars, 'chars');
+    }
     
-    // Step 2: Upload to GCS
-    updateQueueStatus(queueId, 'Uploading file...', 'processing');
-    const putRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || getMimeType(file.name) },
-      body: file
-    });
-    
-    if (!putRes.ok) throw new Error('File upload failed');
-    console.log('File uploaded to GCS');
-    
-    // Step 3: Wait for Vertesia to process/index the document
-    updateQueueStatus(queueId, 'Indexing document...', 'processing');
-    const processedDoc = await waitForDocumentReady(objectId, file.name, queueId);
-    console.log('Document indexed:', processedDoc.id, processedDoc.status);
-    
-    // Step 4: Process through agent (now document is accessible)
+    // Step 2: Process through agent with content directly in prompt
     updateQueueStatus(queueId, 'Processing with AI...', 'processing');
-    await runDocumentProcessing(processedDoc.id, file.name, queueId);
+    await runDocumentProcessing(file.name, fileContent, queueId);
     
   } catch (err) {
     console.error('Process error:', err);
@@ -1519,83 +1520,46 @@ async function processFile(file) {
   }
 }
 
-function getMimeType(filename) {
-  const ext = filename.split('.').pop().toLowerCase();
-  const types = {
-    pdf: 'application/pdf',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    doc: 'application/msword',
-    txt: 'text/plain',
-    md: 'text/markdown',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    xls: 'application/vnd.ms-excel',
-    csv: 'text/csv'
-  };
-  return types[ext] || 'application/octet-stream';
-}
-
-// ===== DOCUMENT INDEXING WAIT =====
-async function waitForDocumentReady(objectId, fileName, queueId, maxAttempts = 60, intervalMs = 2000) {
-  console.log(`Waiting for document ${objectId} to be indexed...`);
-  
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const token = await getAuthToken();
-      
-      // Use /objects/search which explicitly supports id filtering
-      const res = await fetch(`${CONFIG.API_BASE}/objects/search`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          query: { id: objectId },
-          limit: 1
-        })
-      });
-      
-      if (res.ok) {
-        const results = await res.json();
-        if (results && results.length > 0) {
-          const doc = results[0];
-          console.log(`Attempt ${attempt}: Document status = "${doc.status}"`);
-          
-          // Update queue with current status
-          updateQueueStatus(queueId, `Indexing... (${doc.status})`, 'processing');
-          
-          // Check if document is ready (not just "created")
-          // Common statuses: created, processing, processed, ready, etc.
-          if (doc.status && doc.status !== 'created' && doc.status !== 'processing') {
-            console.log(`Document ${objectId} is ready with status: ${doc.status}`);
-            return doc;
-          }
-        }
-      } else {
-        console.warn(`Search attempt ${attempt} returned ${res.status}`);
-      }
-    } catch (err) {
-      console.warn(`Poll attempt ${attempt} failed:`, err.message);
+// Basic DOCX text extraction (DOCX is a ZIP with XML inside)
+async function extractDocxText(file) {
+  try {
+    const JSZip = window.JSZip;
+    if (!JSZip) {
+      // Fallback if JSZip not loaded
+      return `[DOCX file: ${file.name}]\n\nNote: DOCX extraction requires JSZip library. Content not extracted.`;
     }
     
-    // Wait before next attempt
-    if (attempt < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, intervalMs));
+    const zip = await JSZip.loadAsync(file);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+    
+    if (!documentXml) {
+      return `[DOCX file: ${file.name}]\n\nNote: Could not find document.xml in DOCX.`;
     }
+    
+    // Strip XML tags to get plain text
+    const text = documentXml
+      .replace(/<w:p[^>]*>/g, '\n')  // Paragraph breaks
+      .replace(/<w:br[^>]*>/g, '\n') // Line breaks
+      .replace(/<w:tab[^>]*>/g, '\t') // Tabs
+      .replace(/<[^>]+>/g, '')        // Remove all other tags
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x[0-9A-Fa-f]+;/g, ' ') // Remove hex entities
+      .replace(/\n{3,}/g, '\n\n')    // Collapse multiple newlines
+      .trim();
+    
+    return text || `[DOCX file: ${file.name}]\n\nNote: No text content found.`;
+  } catch (e) {
+    console.error('DOCX extraction error:', e);
+    return `[DOCX file: ${file.name}]\n\nNote: Failed to extract text - ${e.message}`;
   }
-  
-  // Timeout - but let's try to proceed anyway, maybe the agent can handle it
-  console.warn(`Document indexing timeout after ${maxAttempts * intervalMs / 1000}s, proceeding anyway...`);
-  return { id: objectId, status: 'timeout' };
 }
 
-async function runDocumentProcessing(objectId, fileName, queueId) {
+async function runDocumentProcessing(fileName, fileContent, queueId) {
   const job = {
     id: queueId,
-    objectId,
     fileName,
     status: 'processing',
     collectionId: selectedCollection?.id,
@@ -1605,9 +1569,13 @@ async function runDocumentProcessing(objectId, fileName, queueId) {
   renderCollections();
   
   try {
-    const task = `Process uploaded document with Object ID: ${objectId}
+    const task = `Process the following document:
 
+=== DOCUMENT START ===
 Document Name: ${fileName}
+
+${fileContent}
+=== DOCUMENT END ===
 
 Please:
 1. Identify the client from the document content
@@ -1615,12 +1583,14 @@ Please:
 3. Update or create the client checklist
 4. Extract all relevant information`;
 
+    console.log('Sending to agent, content length:', fileContent.length);
+    
     const res = await apiAuth('/execute/async', {
       method: 'POST',
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,
-        Task: task,
+        data: { task },
         config: {},
         interactive: true,
         max_iterations: 100
@@ -1632,12 +1602,12 @@ Please:
     if (res?.runId && res?.workflowId) {
       pollCompletion(res.workflowId, res.runId, queueId, fileName);
     } else {
-      throw new Error('No runId');
+      throw new Error('No runId returned');
     }
   } catch (err) {
     console.error('Processing error:', err);
     job.status = 'error';
-    updateQueueStatus(queueId, 'Processing failed', 'error');
+    updateQueueStatus(queueId, 'Processing failed: ' + err.message, 'error');
     renderCollections();
   }
 }

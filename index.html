@@ -1545,7 +1545,8 @@ async function waitForDocumentReady(objectId, fileName, queueId, maxAttempts = 6
     try {
       const token = await getAuthToken();
       
-      const res = await fetch(`${CONFIG.API_BASE}/objects/find`, {
+      // Use /objects/search which explicitly supports id filtering
+      const res = await fetch(`${CONFIG.API_BASE}/objects/search`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1573,6 +1574,8 @@ async function waitForDocumentReady(objectId, fileName, queueId, maxAttempts = 6
             return doc;
           }
         }
+      } else {
+        console.warn(`Search attempt ${attempt} returned ${res.status}`);
       }
     } catch (err) {
       console.warn(`Poll attempt ${attempt} failed:`, err.message);

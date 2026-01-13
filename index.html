@@ -1580,7 +1580,7 @@ async function processFile(file) {
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,
-        data: { objectId: obj.id },
+        task: { objectId: obj.id },
         config: {},
         interactive: true,
         max_iterations: 100

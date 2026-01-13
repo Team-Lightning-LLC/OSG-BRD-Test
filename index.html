@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSG Â· Document Processing</title>
+  <title>OSG Document Processing</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
@@ -1575,12 +1575,8 @@ async function processFile(file) {
 
     // Step 5: Send to agent
     updateQueueStatus(queueId, 'Processing...', 'processing');
-    await fetch(`${CONFIG.API_BASE}/execute/async`, {
+    await apiAuth('/execute/async', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,

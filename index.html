@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSG · Document Processing</title>
+  <title>OSG Â· Document Processing</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
@@ -487,6 +487,48 @@
     
     .queue-item-check { color: var(--success); flex-shrink: 0; }
     
+    /* Jobs Panel */
+    .jobs-panel {
+      margin-bottom: 14px;
+      background: var(--warning-soft);
+      border: 1px solid #f0e6c8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      flex-shrink: 0;
+    }
+    
+    .jobs-panel.hidden { display: none; }
+    
+    .jobs-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #8a6d14;
+      margin-bottom: 6px;
+    }
+    
+    .jobs-list { display: flex; flex-direction: column; gap: 4px; }
+    
+    .job-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #6b5a10;
+    }
+    
+    .job-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #d4c89b;
+      border-top-color: #8a6d14;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      flex-shrink: 0;
+    }
+    
     /* Library Section */
     .library-section {
       flex: 1;
@@ -559,8 +601,8 @@
     .library-item:hover { background: var(--bg); }
     
     .library-item-icon {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       background: var(--accent-soft);
       border-radius: 6px;
       display: flex;
@@ -581,48 +623,14 @@
       text-overflow: ellipsis;
     }
     
-    .library-item-meta {
-      font-size: 10px;
-      color: var(--muted);
-    }
+    .library-item-meta { font-size: 10px; color: var(--muted); }
     
     .library-empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
+      text-align: center;
+      padding: 30px 16px;
       color: var(--muted);
       font-size: 12px;
     }
-    
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s ease;
-    }
-    
-    .btn-primary {
-      background: var(--accent);
-      color: white;
-    }
-    
-    .btn-primary:hover { background: var(--accent-light); }
-    
-    .btn-secondary {
-      background: var(--bg);
-      color: var(--ink);
-      border: 1px solid var(--border);
-    }
-    
-    .btn-secondary:hover { background: var(--border); }
     
     /* Loading Overlay */
     .loading-overlay {
@@ -634,13 +642,10 @@
       align-items: center;
       justify-content: center;
       z-index: 1000;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s;
     }
     
-    .loading-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
     
     .loading-spinner {
       width: 36px;
@@ -648,38 +653,26 @@
       border: 3px solid var(--border);
       border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 16px;
+      animation: spin 0.8s linear infinite;
     }
     
-    .loading-text {
-      color: var(--muted);
-      font-size: 14px;
-    }
+    .loading-text { margin-top: 14px; color: var(--muted); font-size: 13px; }
     
     /* Toast */
-    .toast-container {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 1001;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
     
     .toast {
-      background: var(--ink);
+      background: var(--primary);
       color: white;
       padding: 12px 18px;
       border-radius: 8px;
-      font-size: 13px;
+      margin-top: 8px;
+      box-shadow: var(--shadow-lg);
       display: flex;
       align-items: center;
-      gap: 8px;
-      box-shadow: var(--shadow-lg);
+      gap: 10px;
+      font-size: 13px;
       animation: slideIn 0.3s ease;
-      transition: opacity 0.3s ease;
     }
     
     .toast.success { background: var(--success); }
@@ -690,43 +683,65 @@
       to { transform: translateX(0); opacity: 1; }
     }
     
-    /* Dialog */
-    dialog {
+    /* Button */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
       border: none;
-      border-radius: 12px;
-      box-shadow: var(--shadow-lg);
-      padding: 0;
-      max-width: 800px;
-      width: 90%;
-      max-height: 80vh;
-      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     
-    dialog::backdrop {
-      background: rgba(0,0,0,0.4);
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-light); }
+    .btn-secondary { background: var(--bg); color: var(--ink); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    
+    /* Document Viewer Dialog */
+    dialog#docViewer {
+      width: min(900px, 90vw);
+      height: min(80vh, 700px);
+      border: 0;
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
     }
+    
+    dialog#docViewer::backdrop { background: rgba(13,33,55,0.6); }
     
     .viewer-header {
-      background: var(--primary);
-      color: white;
-      padding: 14px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--primary);
+      color: white;
     }
     
     .viewer-title {
       font-size: 15px;
       font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      margin-right: 16px;
     }
     
     .viewer-close {
-      background: none;
-      border: none;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
       color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
       cursor: pointer;
-      padding: 4px;
-      border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -881,6 +896,15 @@
             </h3>
           </div>
           <div class="panel-body">
+            <!-- Processing Jobs -->
+            <div class="jobs-panel hidden" id="jobsPanel">
+              <div class="jobs-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Processing Documents
+              </div>
+              <div class="jobs-list" id="jobsList"></div>
+            </div>
+
             <!-- Upload Zone -->
             <div class="upload-section">
               <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
@@ -955,7 +979,8 @@
 const CONFIG = {
   API_BASE: 'https://api.vertesia.io/api/v1',
   AUTH_BASE: 'https://api.vertesia.io',
-  API_KEY: 'sk-cf3c2d29bc38bfee2ae95bf107cb9046'
+  API_KEY: 'sk-cf3c2d29bc38bfee2ae95bf107cb9046',
+  INTERACTION: 'DocumentProcessing'
 };
 
 // ===== STATE =====
@@ -965,6 +990,7 @@ let collections = [];
 let allDocuments = [];
 let selectedCollection = null;
 let collectionMembers = {}; // collectionId -> [docIds]
+let processingJobs = [];
 let menuTargetCollection = null;
 
 // Persisted state
@@ -1123,6 +1149,7 @@ function renderCollections() {
     const isActive = selectedCollection?.id === col.id;
     const isPinned = pinnedCollections.has(col.id);
     const isComplete = completedCollections.has(col.id);
+    const jobs = processingJobs.filter(j => j.collectionId === col.id && j.status === 'processing');
     
     html += `
       <div class="collection-card ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}" 
@@ -1142,6 +1169,7 @@ function renderCollections() {
         <div class="card-meta">
           <span class="card-status ${isComplete ? 'complete' : 'active'}">${isComplete ? 'Complete' : 'Active'}</span>
         </div>
+        ${jobs.length > 0 ? `<span class="card-badge processing">${jobs.length} processing</span>` : ''}
       </div>
     `;
   });
@@ -1181,8 +1209,27 @@ function renderLibrary() {
       </div>
       <div class="library-item-info">
         <div class="library-item-name" title="${doc.name}">${doc.name}</div>
-        <div class="library-item-meta">${doc.date} · ${doc.type}</div>
+        <div class="library-item-meta">${doc.date} Â· ${doc.type}</div>
       </div>
+    </div>
+  `).join('');
+}
+
+function updateJobsPanel() {
+  const panel = document.getElementById('jobsPanel');
+  const list = document.getElementById('jobsList');
+  const active = processingJobs.filter(j => j.status === 'processing');
+  
+  if (active.length === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+  
+  panel.classList.remove('hidden');
+  list.innerHTML = active.map(j => `
+    <div class="job-item">
+      <div class="job-spinner"></div>
+      <span>${j.fileName}</span>
     </div>
   `).join('');
 }
@@ -1460,7 +1507,7 @@ async function handleFiles(files) {
 
 async function processFile(file) {
   const queueId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  addToQueue(queueId, file.name, 'uploading');
+  addToQueue(queueId, file.name);
   
   const mimeType = file.type || getMimeType(file.name);
   
@@ -1486,7 +1533,7 @@ async function processFile(file) {
     
     if (!uploadRes.ok) {
       const errText = await uploadRes.text();
-      throw new Error(`Upload URL failed: ${uploadRes.status} - ${errText}`);
+      throw new Error(`Upload URL failed: ${uploadRes.status}`);
     }
     
     const uploadData = await uploadRes.json();
@@ -1500,13 +1547,10 @@ async function processFile(file) {
       body: file
     });
     
-    if (!putRes.ok) {
-      const errText = await putRes.text();
-      throw new Error(`GCS upload failed: ${putRes.status} - ${errText}`);
-    }
+    if (!putRes.ok) throw new Error('GCS upload failed');
     console.log('File uploaded to GCS');
     
-    // Step 4: Create object in Vertesia (THIS IS THE KEY STEP!)
+    // Step 4: Create object in Vertesia (THE KEY STEP!)
     updateQueueStatus(queueId, 'Creating object...', 'processing');
     const createRes = await fetch(`${CONFIG.API_BASE}/objects`, {
       method: 'POST',
@@ -1517,7 +1561,7 @@ async function processFile(file) {
       body: JSON.stringify({
         name: file.name,
         content: {
-          source: uploadData.id,  // GCS path from step 2
+          source: uploadData.id,
           type: mimeType,
           name: file.name
         }
@@ -1526,7 +1570,7 @@ async function processFile(file) {
     
     if (!createRes.ok) {
       const errText = await createRes.text();
-      throw new Error(`Create object failed: ${createRes.status} - ${errText}`);
+      throw new Error(`Create object failed: ${createRes.status}`);
     }
     
     const obj = await createRes.json();
@@ -1542,7 +1586,7 @@ async function processFile(file) {
             'Authorization': `Bearer ${jwt}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ id: obj.id })
+          body: JSON.stringify({ action: 'add', members: [obj.id] })
         });
         console.log('Added to collection:', selectedCollection.name);
       } catch (e) {
@@ -1552,7 +1596,7 @@ async function processFile(file) {
     
     // Done!
     updateQueueStatus(queueId, 'Uploaded', 'complete');
-    showToast(`${file.name} uploaded (ID: ${obj.id})`, 'success');
+    showToast(`${file.name} uploaded`, 'success');
     
     // Refresh to show new document
     collectionMembers = {};

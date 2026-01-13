@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OSG Document Processing</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
@@ -67,9 +68,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--primary);
+      overflow: hidden;
+    }
+    
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
     .brand-text { color: white; }
@@ -800,7 +805,7 @@
     <!-- Header -->
     <header class="header">
       <div class="logo-section">
-        <div class="logo">OSG</div>
+        <div class="logo"><img src="assets/logo.png" alt="OSG"></div>
         <div class="brand-text">
           <div class="brand-name">Document Processing</div>
           <div class="brand-sub">Client Onboarding Automation</div>

@@ -487,48 +487,6 @@
     
     .queue-item-check { color: var(--success); flex-shrink: 0; }
     
-    /* Jobs Panel */
-    .jobs-panel {
-      margin-bottom: 14px;
-      background: var(--warning-soft);
-      border: 1px solid #f0e6c8;
-      border-radius: 8px;
-      padding: 10px 14px;
-      flex-shrink: 0;
-    }
-    
-    .jobs-panel.hidden { display: none; }
-    
-    .jobs-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #8a6d14;
-      margin-bottom: 6px;
-    }
-    
-    .jobs-list { display: flex; flex-direction: column; gap: 4px; }
-    
-    .job-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      color: #6b5a10;
-    }
-    
-    .job-spinner {
-      width: 12px;
-      height: 12px;
-      border: 2px solid #d4c89b;
-      border-top-color: #8a6d14;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      flex-shrink: 0;
-    }
-    
     /* Library Section */
     .library-section {
       flex: 1;
@@ -896,15 +854,6 @@
             </h3>
           </div>
           <div class="panel-body">
-            <!-- Processing Jobs -->
-            <div class="jobs-panel hidden" id="jobsPanel">
-              <div class="jobs-header">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Processing Documents
-              </div>
-              <div class="jobs-list" id="jobsList"></div>
-            </div>
-
             <!-- Upload Zone -->
             <div class="upload-section">
               <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
@@ -989,7 +938,7 @@ let tokenExpiry = null;
 let collections = [];
 let allDocuments = [];
 let selectedCollection = null;
-let collectionMembers = {}; // collectionId -> [docIds]
+let collectionMembers = {};
 let processingJobs = [];
 let menuTargetCollection = null;
 
@@ -1122,7 +1071,6 @@ async function refreshData() {
 function renderCollections() {
   const container = document.getElementById('collectionsScroll');
   
-  // Sort: pinned first, then active, then completed
   const sorted = [...collections].sort((a, b) => {
     const aPinned = pinnedCollections.has(a.id);
     const bPinned = pinnedCollections.has(b.id);
@@ -1209,27 +1157,8 @@ function renderLibrary() {
       </div>
       <div class="library-item-info">
         <div class="library-item-name" title="${doc.name}">${doc.name}</div>
-        <div class="library-item-meta">${doc.date} Â· ${doc.type}</div>
+        <div class="library-item-meta">${doc.date} · ${doc.type}</div>
       </div>
-    </div>
-  `).join('');
-}
-
-function updateJobsPanel() {
-  const panel = document.getElementById('jobsPanel');
-  const list = document.getElementById('jobsList');
-  const active = processingJobs.filter(j => j.status === 'processing');
-  
-  if (active.length === 0) {
-    panel.classList.add('hidden');
-    return;
-  }
-  
-  panel.classList.remove('hidden');
-  list.innerHTML = active.map(j => `
-    <div class="job-item">
-      <div class="job-spinner"></div>
-      <span>${j.fileName}</span>
     </div>
   `).join('');
 }
@@ -1244,7 +1173,6 @@ async function selectCollection(colId) {
     ${selectedCollection.name}
   `;
   
-  // Load members and library
   await loadCollectionMembers(colId);
   renderLibrary();
   await loadChecklist(colId);
@@ -1257,7 +1185,6 @@ async function loadChecklist(colId) {
   try {
     const memberIds = collectionMembers[colId] || [];
     
-    // Find checklist doc
     let checklistDoc = null;
     for (const id of memberIds) {
       const doc = allDocuments.find(d => d.id === id);
@@ -1512,20 +1439,17 @@ async function processFile(file) {
   const mimeType = file.type || getMimeType(file.name);
   
   try {
-    // Step 1: Get JWT token (needed for creating objects)
-    updateQueueStatus(queueId, 'Getting JWT...', 'processing');
+    // Step 1: Get JWT token
+    updateQueueStatus(queueId, 'Authenticating...', 'processing');
     const jwtRes = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${CONFIG.API_KEY}`
-      }
+      headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
     });
     if (!jwtRes.ok) throw new Error(`JWT failed: ${jwtRes.status}`);
-    const jwtData = await jwtRes.json();
-    const jwt = jwtData.token;
+    const jwt = (await jwtRes.json()).token;
     console.log('Got JWT');
 
-    // Step 2: Get upload URL (reserves GCS storage)
+    // Step 2: Get upload URL
     updateQueueStatus(queueId, 'Getting upload URL...', 'processing');
     const uploadRes = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
       method: 'POST',
@@ -1533,10 +1457,7 @@ async function processFile(file) {
         'Authorization': `Bearer ${CONFIG.API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        name: file.name,
-        mime_type: mimeType
-      })
+      body: JSON.stringify({ name: file.name, mime_type: mimeType })
     });
     if (!uploadRes.ok) throw new Error(`Upload URL failed: ${uploadRes.status}`);
     const uploadData = await uploadRes.json();
@@ -1573,19 +1494,27 @@ async function processFile(file) {
     const obj = await createRes.json();
     console.log('Object created! ID:', obj.id);
 
-    // Step 5: Send to agent
+    // Step 5: Send object ID to agent for processing
     updateQueueStatus(queueId, 'Processing...', 'processing');
-    await apiAuth('/execute/async', {
+    const agentRes = await fetch(`${CONFIG.API_BASE}/execute/async`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,
-        task: { objectId: obj.id },
+        data: { objectId: obj.id },
         config: {},
         interactive: true,
         max_iterations: 100
       })
     });
+    if (!agentRes.ok) {
+      const errText = await agentRes.text();
+      throw new Error(`Agent failed: ${agentRes.status} - ${errText}`);
+    }
     console.log('Sent to agent:', obj.id);
 
     updateQueueStatus(queueId, 'Complete', 'complete');

@@ -1573,6 +1573,25 @@ async function processFile(file) {
     const obj = await createRes.json();
     console.log('Object created! ID:', obj.id);
 
+    // Step 5: Send to agent
+    updateQueueStatus(queueId, 'Processing...', 'processing');
+    await fetch(`${CONFIG.API_BASE}/execute/async`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        type: 'conversation',
+        interaction: CONFIG.INTERACTION,
+        data: { objectId: obj.id },
+        config: {},
+        interactive: true,
+        max_iterations: 100
+      })
+    });
+    console.log('Sent to agent:', obj.id);
+
     updateQueueStatus(queueId, 'Complete', 'complete');
     showToast(`${file.name} uploaded`, 'success');
 

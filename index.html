@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OSG Document Processing</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d2137'/%3E%3Crect x='2' y='24' width='28' height='3' rx='1.5' fill='%232a7d8c'/%3E%3Ctext x='16' y='19' text-anchor='middle' font-family='system-ui' font-size='13' font-weight='800' fill='white'%3EOSG%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
@@ -61,19 +61,18 @@
     }
     
     .logo {
-      height: 36px;
-      background: white;
-      border-radius: 6px;
-      padding: 4px 8px;
+      width: 42px;
+      height: 42px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     
-    .logo img {
-      height: 28px;
-      width: auto;
-      object-fit: contain;
+    .logo svg {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
     
     .brand-text { color: white; }
@@ -804,7 +803,13 @@
     <!-- Header -->
     <header class="header">
       <div class="logo-section">
-        <div class="logo"><img src="assets/logo.png" alt="OSG"></div>
+        <div class="logo">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#0d2137"/>
+            <rect x="2" y="24" width="28" height="3" rx="1.5" fill="#2a7d8c"/>
+            <text x="16" y="19" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="800" fill="white" letter-spacing="0.5">OSG</text>
+          </svg>
+        </div>
         <div class="brand-text">
           <div class="brand-name">Document Processing</div>
           <div class="brand-sub">Client Onboarding Automation</div>

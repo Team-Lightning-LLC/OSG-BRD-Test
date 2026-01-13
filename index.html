@@ -1278,6 +1278,7 @@ function openCardMenu(colId, event) {
   const rect = event.target.getBoundingClientRect();
   
   menuTargetCollection = collections.find(c => c.id === colId);
+  console.log('Opening menu for:', colId, 'Found:', menuTargetCollection);
   
   const isComplete = completedCollections.has(colId);
   document.getElementById('completeMenuText').textContent = isComplete ? 'Reopen' : 'Mark Complete';
@@ -1293,22 +1294,24 @@ function closeCardMenu() {
 }
 
 async function renameCollection() {
+  console.log('renameCollection called, target:', menuTargetCollection);
   if (!menuTargetCollection) return;
+  const targetCol = menuTargetCollection;
   closeCardMenu();
   
-  const newName = prompt('Enter new name:', menuTargetCollection.name);
-  if (!newName?.trim() || newName === menuTargetCollection.name) return;
+  const newName = prompt('Enter new name:', targetCol.name);
+  if (!newName?.trim() || newName === targetCol.name) return;
   
   try {
-    await apiAuth(`/collections/${menuTargetCollection.id}`, {
+    await apiAuth(`/collections/${targetCol.id}`, {
       method: 'PUT',
       body: JSON.stringify({ name: newName.trim() })
     });
     
-    menuTargetCollection.name = newName.trim();
+    targetCol.name = newName.trim();
     renderCollections();
     
-    if (selectedCollection?.id === menuTargetCollection.id) {
+    if (selectedCollection?.id === targetCol.id) {
       document.getElementById('collectionTitle').innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         ${newName.trim()}
@@ -1324,10 +1327,11 @@ async function renameCollection() {
 }
 
 function toggleCompleteCollection() {
+  console.log('toggleCompleteCollection called, target:', menuTargetCollection);
   if (!menuTargetCollection) return;
+  const colId = menuTargetCollection.id;
   closeCardMenu();
   
-  const colId = menuTargetCollection.id;
   if (completedCollections.has(colId)) {
     completedCollections.delete(colId);
     showToast('Reopened');
@@ -1342,21 +1346,23 @@ function toggleCompleteCollection() {
 }
 
 async function deleteCollection() {
+  console.log('deleteCollection called, target:', menuTargetCollection);
   if (!menuTargetCollection) return;
+  const targetCol = menuTargetCollection;
   closeCardMenu();
   
-  if (!confirm(`Delete "${menuTargetCollection.name}"? This cannot be undone.`)) return;
+  if (!confirm(`Delete "${targetCol.name}"? This cannot be undone.`)) return;
   
   try {
-    await api(`/collections/${menuTargetCollection.id}`, { method: 'DELETE' });
+    await api(`/collections/${targetCol.id}`, { method: 'DELETE' });
     
-    collections = collections.filter(c => c.id !== menuTargetCollection.id);
-    pinnedCollections.delete(menuTargetCollection.id);
-    completedCollections.delete(menuTargetCollection.id);
+    collections = collections.filter(c => c.id !== targetCol.id);
+    pinnedCollections.delete(targetCol.id);
+    completedCollections.delete(targetCol.id);
     savePinned();
     saveCompleted();
     
-    if (selectedCollection?.id === menuTargetCollection.id) {
+    if (selectedCollection?.id === targetCol.id) {
       selectedCollection = null;
       document.getElementById('collectionTitle').innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>

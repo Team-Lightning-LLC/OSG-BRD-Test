@@ -3,699 +3,301 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSG</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%23111'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23444'/%3E%3C/svg%3E">
+  <title>·</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='4' fill='%23888'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    :root {
-      --void: #0a0a0a;
-      --deep: #111111;
-      --surface: #1a1a1a;
-      --glow: #252525;
-      
-      --light: #e8e4df;
-      --light-mid: #a8a4a0;
-      --light-dim: #6a6662;
-      --light-ghost: #3a3836;
-      
-      --accent: #7ab8b8;
-      --accent-dim: rgba(122, 184, 184, 0.3);
-      --accent-glow: rgba(122, 184, 184, 0.08);
-      
-      --complete: #8bc49a;
-      --warning: #c4b078;
-      --missing: #c48888;
-      
-      --font-serif: 'Cormorant', Georgia, serif;
-      --font-mono: 'IBM Plex Mono', monospace;
-      
-      --ease: cubic-bezier(0.16, 1, 0.3, 1);
-      --ease-soft: cubic-bezier(0.45, 0, 0.55, 1);
-    }
-    
     * {
-      box-sizing: border-box;
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
     }
     
     html, body {
       height: 100%;
       overflow: hidden;
+      background: #000;
+      cursor: none;
     }
     
-    body {
-      font-family: var(--font-mono);
-      background: var(--void);
-      color: var(--light);
-      -webkit-font-smoothing: antialiased;
-    }
-    
-    /* === THE VOID === */
-    .void {
+    /* Custom cursor - presence indicator */
+    .presence {
       position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      width: 80px;
+      height: 80px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: 
+        width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.3s ease;
+      z-index: 1000;
     }
     
-    /* Ambient background */
-    .void::before {
+    .presence::after {
       content: '';
       position: absolute;
-      inset: 0;
-      background: 
-        radial-gradient(ellipse 80% 50% at 50% 100%, var(--accent-glow), transparent),
-        radial-gradient(ellipse 60% 40% at 20% 20%, rgba(255,255,255,0.02), transparent);
-      pointer-events: none;
-    }
-    
-    /* === PRESENCE INDICATOR === */
-    .presence {
-      position: absolute;
-      top: 32px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--light-dim);
-      opacity: 0;
-      animation: fadeIn 1s var(--ease) 0.5s forwards;
-    }
-    
-    .presence-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      animation: breathe 3s var(--ease-soft) infinite;
-    }
-    
-    .presence-dot.offline {
-      background: var(--missing);
-      animation: none;
-    }
-    
-    @keyframes breathe {
-      0%, 100% { opacity: 0.4; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.2); }
-    }
-    
-    @keyframes fadeIn {
-      to { opacity: 1; }
-    }
-    
-    /* === THE FIELD === */
-    .field {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    /* === NODES (Documents/Collections) === */
-    .node {
-      position: absolute;
-      cursor: pointer;
-      transition: all 0.5s var(--ease);
-    }
-    
-    .node-inner {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      padding: 16px;
-      border-radius: 50%;
-      background: var(--surface);
-      border: 1px solid var(--light-ghost);
-      transition: all 0.3s var(--ease);
-    }
-    
-    .node:hover .node-inner {
-      background: var(--glow);
-      border-color: var(--accent-dim);
-      box-shadow: 0 0 40px var(--accent-glow);
-    }
-    
-    .node.active .node-inner {
-      background: var(--glow);
-      border-color: var(--accent);
-      box-shadow: 0 0 60px var(--accent-glow);
-    }
-    
-    .node-glyph {
-      width: 24px;
-      height: 24px;
-      color: var(--light-dim);
-      transition: color 0.3s var(--ease);
-    }
-    
-    .node:hover .node-glyph,
-    .node.active .node-glyph {
-      color: var(--accent);
-    }
-    
-    .node-label {
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      margin-top: 12px;
-      font-size: 10px;
-      letter-spacing: 0.05em;
-      color: var(--light-dim);
-      white-space: nowrap;
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      opacity: 0;
-      transition: opacity 0.3s var(--ease);
-    }
-    
-    .node:hover .node-label {
-      opacity: 1;
-    }
-    
-    .node.collection .node-inner {
-      width: 72px;
-      height: 72px;
-    }
-    
-    .node.document .node-inner {
-      width: 48px;
-      height: 48px;
-      padding: 12px;
-    }
-    
-    .node.document .node-glyph {
-      width: 18px;
-      height: 18px;
-    }
-    
-    /* Connection lines */
-    .connections {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-    }
-    
-    .connections line {
-      stroke: var(--light-ghost);
-      stroke-width: 1;
-      opacity: 0.3;
-    }
-    
-    /* === THE DIALOGUE === */
-    .dialogue {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-      background: linear-gradient(to top, var(--void) 0%, transparent 100%);
-      z-index: 100;
-    }
-    
-    .dialogue-context {
-      font-family: var(--font-serif);
-      font-size: 14px;
-      font-style: italic;
-      color: var(--light-dim);
-      opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.5s var(--ease);
-      text-align: center;
-      max-width: 400px;
-    }
-    
-    .dialogue-context.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    
-    .dialogue-input-wrap {
-      position: relative;
-      width: 100%;
-      max-width: 600px;
-    }
-    
-    .dialogue-input {
-      width: 100%;
-      padding: 20px 24px;
-      background: var(--surface);
-      border: 1px solid var(--light-ghost);
-      border-radius: 32px;
-      font-family: var(--font-mono);
-      font-size: 14px;
-      color: var(--light);
-      outline: none;
-      transition: all 0.3s var(--ease);
-    }
-    
-    .dialogue-input::placeholder {
-      color: var(--light-ghost);
-    }
-    
-    .dialogue-input:focus {
-      border-color: var(--accent-dim);
-      box-shadow: 0 0 40px var(--accent-glow);
-    }
-    
-    .dialogue-hint {
-      position: absolute;
-      right: 24px;
       top: 50%;
-      transform: translateY(-50%);
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      color: var(--light-ghost);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s var(--ease);
+      left: 50%;
+      width: 4px;
+      height: 4px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
     }
     
-    .dialogue-input:focus ~ .dialogue-hint {
+    .presence.hovering {
+      width: 120px;
+      height: 120px;
+      border-color: rgba(255,255,255,0.3);
+    }
+    
+    .presence.focused {
+      width: 200px;
+      height: 200px;
+      border-color: rgba(140, 200, 200, 0.4);
+    }
+    
+    /* The canvas */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+    
+    /* Whisper - minimal text that appears */
+    .whisper {
+      position: fixed;
+      font-family: 'Cormorant', Georgia, serif;
+      font-size: 14px;
+      font-weight: 300;
+      font-style: italic;
+      color: rgba(255,255,255,0.4);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 100;
+      max-width: 200px;
+      text-align: center;
+      transform: translate(-50%, -50%);
+    }
+    
+    .whisper.visible {
       opacity: 1;
     }
     
-    /* Quick actions */
-    .quick-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 600px;
-    }
-    
-    .quick-action {
-      padding: 8px 16px;
-      background: transparent;
-      border: 1px solid var(--light-ghost);
-      border-radius: 20px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--light-dim);
-      cursor: pointer;
-      transition: all 0.2s var(--ease);
-    }
-    
-    .quick-action:hover {
-      border-color: var(--accent-dim);
-      color: var(--accent);
-      background: var(--accent-glow);
-    }
-    
-    /* === THE AWARENESS (Expanded View) === */
-    .awareness {
+    /* The deep view - when entering a document */
+    .deep {
       position: fixed;
       inset: 0;
-      background: var(--void);
-      z-index: 200;
-      display: flex;
+      background: #000;
+      z-index: 500;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.5s var(--ease);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
     
-    .awareness.open {
+    .deep.open {
       opacity: 1;
       pointer-events: all;
     }
     
-    .awareness-close {
-      position: absolute;
-      top: 32px;
-      right: 32px;
-      width: 48px;
-      height: 48px;
-      background: transparent;
-      border: 1px solid var(--light-ghost);
-      border-radius: 50%;
-      color: var(--light-dim);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s var(--ease);
-      z-index: 10;
-    }
-    
-    .awareness-close:hover {
-      border-color: var(--light-dim);
-      color: var(--light);
-    }
-    
-    .awareness-sidebar {
-      width: 320px;
-      border-right: 1px solid var(--light-ghost);
-      padding: 80px 32px 32px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    
-    .awareness-title {
-      font-family: var(--font-serif);
-      font-size: 24px;
-      font-weight: 400;
-      color: var(--light);
-      margin-bottom: 8px;
-    }
-    
-    .awareness-meta {
-      font-size: 11px;
-      color: var(--light-dim);
-      margin-bottom: 32px;
-    }
-    
-    .awareness-section {
-      margin-bottom: 24px;
-    }
-    
-    .awareness-section-title {
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--light-ghost);
-      margin-bottom: 12px;
-    }
-    
-    .awareness-docs {
-      flex: 1;
+    .deep-content {
+      max-width: 680px;
+      max-height: 80vh;
+      padding: 60px;
       overflow-y: auto;
+      font-family: 'Cormorant', Georgia, serif;
+      color: rgba(255,255,255,0.8);
+      opacity: 0;
+      transform: scale(0.95);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
     }
     
-    .awareness-doc {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.2s var(--ease);
+    .deep.open .deep-content {
+      opacity: 1;
+      transform: scale(1);
     }
     
-    .awareness-doc:hover {
-      background: var(--surface);
+    .deep-content::-webkit-scrollbar {
+      width: 2px;
     }
     
-    .awareness-doc-icon {
-      width: 32px;
-      height: 32px;
-      background: var(--surface);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--light-dim);
-      flex-shrink: 0;
+    .deep-content::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
     }
     
-    .awareness-doc-info {
-      flex: 1;
-      min-width: 0;
-    }
-    
-    .awareness-doc-name {
-      font-size: 13px;
-      color: var(--light);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .awareness-doc-meta {
-      font-size: 10px;
-      color: var(--light-dim);
-    }
-    
-    .awareness-main {
-      flex: 1;
-      padding: 80px 64px 64px;
-      overflow-y: auto;
-    }
-    
-    .awareness-content {
-      max-width: 720px;
-      animation: contentIn 0.5s var(--ease);
-    }
-    
-    @keyframes contentIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    /* Markdown rendering */
-    .awareness-content h1 {
-      font-family: var(--font-serif);
+    .deep-content h1 {
       font-size: 32px;
-      font-weight: 400;
-      color: var(--light);
-      margin-bottom: 32px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--light-ghost);
-    }
-    
-    .awareness-content h2 {
-      font-family: var(--font-serif);
-      font-size: 20px;
-      font-weight: 400;
-      color: var(--light);
-      margin: 40px 0 16px;
-    }
-    
-    .awareness-content h3 {
-      font-size: 14px;
-      font-weight: 400;
-      color: var(--light-mid);
-      margin: 24px 0 12px;
+      font-weight: 300;
+      margin-bottom: 40px;
+      color: rgba(255,255,255,0.9);
       letter-spacing: 0.02em;
     }
     
-    .awareness-content p {
-      font-family: var(--font-serif);
-      font-size: 16px;
-      line-height: 1.8;
-      color: var(--light-mid);
-      margin-bottom: 16px;
+    .deep-content h2 {
+      font-size: 20px;
+      font-weight: 300;
+      margin: 40px 0 20px;
+      color: rgba(255,255,255,0.7);
     }
     
-    .awareness-content ul, .awareness-content ol {
-      font-family: var(--font-serif);
-      font-size: 16px;
-      line-height: 1.8;
-      color: var(--light-mid);
-      margin: 16px 0;
+    .deep-content p {
+      font-size: 18px;
+      line-height: 1.9;
+      margin-bottom: 20px;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .deep-content ul, .deep-content ol {
+      margin: 20px 0;
       padding-left: 24px;
     }
     
-    .awareness-content li {
+    .deep-content li {
+      font-size: 18px;
+      line-height: 1.8;
       margin-bottom: 8px;
+      color: rgba(255,255,255,0.6);
     }
     
-    .awareness-content table {
+    .deep-content table {
       width: 100%;
       border-collapse: collapse;
-      margin: 24px 0;
-      font-size: 13px;
+      margin: 30px 0;
     }
     
-    .awareness-content th {
-      background: var(--surface);
-      color: var(--light);
+    .deep-content th {
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
       padding: 12px 16px;
       text-align: left;
-      font-weight: 400;
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--light-ghost);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
     
-    .awareness-content td {
+    .deep-content td {
+      font-size: 15px;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--light-ghost);
-      color: var(--light-mid);
+      color: rgba(255,255,255,0.6);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     
-    .awareness-content td:first-child {
-      color: var(--light);
-    }
+    .deep-content .complete { color: rgba(140, 200, 160, 0.9); }
+    .deep-content .incomplete { color: rgba(200, 140, 140, 0.9); }
+    .deep-content .partial { color: rgba(200, 180, 140, 0.9); }
     
-    .awareness-content tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .awareness-content .status-complete { color: var(--complete); }
-    .awareness-content .status-incomplete { color: var(--missing); }
-    .awareness-content .status-partial { color: var(--warning); }
-    
-    /* === UPLOAD ZONE (appears on drag) === */
-    .upload-zone {
+    .deep-escape {
       position: fixed;
-      inset: 0;
-      background: rgba(10, 10, 10, 0.95);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 24px;
-      z-index: 300;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s var(--ease);
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cormorant', Georgia, serif;
+      font-size: 12px;
+      font-style: italic;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.1em;
     }
     
-    .upload-zone.active {
+    /* Input - appears at bottom when you start typing */
+    .invoke {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    
+    .invoke.active {
       opacity: 1;
       pointer-events: all;
     }
     
-    .upload-zone-ring {
-      width: 160px;
-      height: 160px;
-      border: 2px dashed var(--accent-dim);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s var(--ease);
-    }
-    
-    .upload-zone.dragover .upload-zone-ring {
-      border-color: var(--accent);
-      box-shadow: 0 0 60px var(--accent-glow);
-      transform: scale(1.1);
-    }
-    
-    .upload-zone-icon {
-      color: var(--accent-dim);
-      transition: color 0.3s var(--ease);
-    }
-    
-    .upload-zone.dragover .upload-zone-icon {
-      color: var(--accent);
-    }
-    
-    .upload-zone-text {
-      font-family: var(--font-serif);
-      font-size: 18px;
+    .invoke input {
+      width: 400px;
+      padding: 16px 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 30px;
+      font-family: 'Cormorant', Georgia, serif;
+      font-size: 16px;
       font-style: italic;
-      color: var(--light-dim);
+      color: rgba(255,255,255,0.8);
+      outline: none;
+      text-align: center;
     }
     
-    .upload-zone-hint {
-      font-size: 11px;
-      color: var(--light-ghost);
+    .invoke input::placeholder {
+      color: rgba(255,255,255,0.3);
     }
     
-    .upload-zone input {
-      display: none;
-    }
-    
-    /* === PROCESSING INDICATOR === */
-    .processing {
+    /* Ambient hint */
+    .hint {
       position: fixed;
-      bottom: 140px;
+      bottom: 40px;
       left: 50%;
       transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
-      background: var(--surface);
-      border: 1px solid var(--light-ghost);
-      border-radius: 24px;
-      font-size: 12px;
-      color: var(--light-dim);
+      font-family: 'Cormorant', Georgia, serif;
+      font-size: 13px;
+      font-style: italic;
+      color: rgba(255,255,255,0.15);
+      letter-spacing: 0.05em;
+      z-index: 50;
+      transition: opacity 0.5s ease;
+    }
+    
+    .hint.hidden {
       opacity: 0;
-      transition: opacity 0.3s var(--ease);
-      z-index: 150;
     }
     
-    .processing.active {
-      opacity: 1;
-    }
-    
-    .processing-spinner {
-      width: 14px;
-      height: 14px;
-      border: 1.5px solid var(--light-ghost);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    /* === TOAST === */
-    .toast-container {
+    /* Drop zone - subtle */
+    .drop-active::before {
+      content: '';
       position: fixed;
-      top: 32px;
-      right: 32px;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(140, 200, 200, 0.05) 0%, transparent 70%);
+      pointer-events: none;
       z-index: 400;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      animation: dropPulse 1.5s ease infinite;
     }
     
-    .toast {
-      padding: 12px 20px;
-      background: var(--surface);
-      border: 1px solid var(--light-ghost);
-      border-radius: 8px;
-      font-size: 12px;
-      color: var(--light);
-      animation: toastIn 0.3s var(--ease);
+    @keyframes dropPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
     }
     
-    .toast.success { border-color: var(--complete); }
-    .toast.error { border-color: var(--missing); }
-    
-    @keyframes toastIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .drop-active .hint {
+      color: rgba(140, 200, 200, 0.4);
     }
     
-    /* === LOADING STATE === */
+    .drop-active .hint::after {
+      content: 'release to offer';
+    }
+    
+    /* Loading */
     .loading {
       position: fixed;
       inset: 0;
-      background: var(--void);
+      background: #000;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 24px;
-      z-index: 500;
-      transition: opacity 0.8s var(--ease);
+      z-index: 1000;
+      transition: opacity 1s ease;
     }
     
     .loading.hidden {
@@ -703,162 +305,66 @@
       pointer-events: none;
     }
     
-    .loading-mark {
-      font-family: var(--font-serif);
-      font-size: 24px;
-      font-weight: 300;
-      letter-spacing: 0.2em;
-      color: var(--light);
-      animation: breathe 2s var(--ease-soft) infinite;
-    }
-    
-    /* === CENTER GLYPH === */
-    .center-glyph {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 120px;
-      height: 120px;
-      border: 1px solid var(--light-ghost);
+    .loading-dot {
+      width: 8px;
+      height: 8px;
+      background: rgba(255,255,255,0.5);
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.5s var(--ease);
-      z-index: 1;
+      animation: breathe 2s ease infinite;
     }
     
-    .center-glyph:hover {
-      border-color: var(--accent-dim);
-      box-shadow: 0 0 80px var(--accent-glow);
+    @keyframes breathe {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.5); }
     }
     
-    .center-glyph svg {
-      color: var(--light-ghost);
-      transition: color 0.3s var(--ease);
+    /* Toast - minimal */
+    .message {
+      position: fixed;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cormorant', Georgia, serif;
+      font-size: 14px;
+      font-style: italic;
+      color: rgba(255,255,255,0.5);
+      z-index: 600;
+      opacity: 0;
+      transition: opacity 0.5s ease;
     }
     
-    .center-glyph:hover svg {
-      color: var(--accent);
-    }
-    
-    .center-glyph.has-content {
-      border-color: var(--accent-dim);
-    }
-    
-    .center-glyph.has-content svg {
-      color: var(--accent);
+    .message.visible {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
-  <!-- Loading -->
   <div class="loading" id="loading">
-    <div class="loading-mark">OSG</div>
-  </div>
-
-  <!-- The Void -->
-  <div class="void">
-    <!-- Presence Indicator -->
-    <div class="presence">
-      <div class="presence-dot" id="presenceDot"></div>
-      <span id="presenceText">Connected</span>
-    </div>
-    
-    <!-- The Field -->
-    <div class="field" id="field">
-      <svg class="connections" id="connections"></svg>
-      
-      <!-- Center Glyph -->
-      <div class="center-glyph" id="centerGlyph" onclick="document.getElementById('fileInput').click()">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="16"/>
-          <line x1="8" y1="12" x2="16" y2="12"/>
-        </svg>
-      </div>
-      
-      <!-- Nodes will be rendered here -->
-    </div>
-    
-    <!-- The Dialogue -->
-    <div class="dialogue">
-      <div class="dialogue-context" id="dialogueContext"></div>
-      <div class="dialogue-input-wrap">
-        <input 
-          type="text" 
-          class="dialogue-input" 
-          id="dialogueInput"
-          placeholder="What are you looking for?"
-          autocomplete="off"
-          onkeydown="handleDialogue(event)"
-        >
-        <span class="dialogue-hint">↵</span>
-      </div>
-      <div class="quick-actions" id="quickActions">
-        <button class="quick-action" onclick="showAllCollections()">Show all</button>
-        <button class="quick-action" onclick="showRecent()">Recent</button>
-        <button class="quick-action" onclick="createNewCollection()">New collection</button>
-      </div>
-    </div>
+    <div class="loading-dot"></div>
   </div>
   
-  <!-- The Awareness (Expanded View) -->
-  <div class="awareness" id="awareness">
-    <button class="awareness-close" onclick="closeAwareness()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
-    
-    <div class="awareness-sidebar">
-      <h1 class="awareness-title" id="awarenessTitle">Collection</h1>
-      <p class="awareness-meta" id="awarenessMeta"></p>
-      
-      <div class="awareness-section">
-        <div class="awareness-section-title">Documents</div>
-      </div>
-      
-      <div class="awareness-docs" id="awarenessDocs">
-        <!-- Documents listed here -->
-      </div>
-    </div>
-    
-    <div class="awareness-main">
-      <div class="awareness-content" id="awarenessContent">
-        <!-- Content rendered here -->
-      </div>
-    </div>
+  <div class="presence" id="presence"></div>
+  <canvas id="field"></canvas>
+  
+  <div class="whisper" id="whisper"></div>
+  
+  <div class="hint" id="hint">attend</div>
+  
+  <div class="invoke" id="invoke">
+    <input type="text" id="invokeInput" placeholder="speak" autocomplete="off">
   </div>
   
-  <!-- Upload Zone -->
-  <div class="upload-zone" id="uploadZone">
-    <div class="upload-zone-ring">
-      <svg class="upload-zone-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="17 8 12 3 7 8"/>
-        <line x1="12" y1="3" x2="12" y2="15"/>
-      </svg>
-    </div>
-    <p class="upload-zone-text">Release to offer</p>
-    <p class="upload-zone-hint">Documents will surface in the field</p>
-    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.md">
+  <div class="deep" id="deep">
+    <div class="deep-content" id="deepContent"></div>
+    <div class="deep-escape">press anywhere to return</div>
   </div>
   
-  <!-- Processing Indicator -->
-  <div class="processing" id="processing">
-    <div class="processing-spinner"></div>
-    <span id="processingText">Processing...</span>
-  </div>
+  <div class="message" id="message"></div>
   
-  <!-- Toast Container -->
-  <div class="toast-container" id="toastContainer"></div>
+  <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.md" style="display:none">
 
 <script>
-// ===== CONFIG =====
+// === CONFIG ===
 const CONFIG = {
   API_BASE: 'https://api.vertesia.io/api/v1',
   AUTH_BASE: 'https://api.vertesia.io',
@@ -866,31 +372,485 @@ const CONFIG = {
   INTERACTION: 'PathB'
 };
 
-// ===== STATE =====
-let jwtToken = null;
-let tokenExpiry = null;
+// === STATE ===
+let particles = [];
+let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 let collections = [];
-let allDocuments = [];
+let documents = [];
 let collectionMembers = {};
-let selectedCollection = null;
-let nodePositions = new Map();
+let hoveredParticle = null;
+let selectedParticle = null;
+let isDeepOpen = false;
+let isInvokeOpen = false;
 
-// ===== API =====
-async function getAuthToken() {
-  if (jwtToken && tokenExpiry && Date.now() < tokenExpiry) return jwtToken;
-  const res = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
-    headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
-  });
-  if (!res.ok) throw new Error('Auth failed');
-  const data = await res.json();
-  jwtToken = data.token;
-  tokenExpiry = Date.now() + 50 * 60 * 1000;
-  return jwtToken;
+// === PARTICLE CLASS ===
+class Particle {
+  constructor(data, type) {
+    this.id = data.id;
+    this.name = data.name;
+    this.type = type; // 'collection' or 'document'
+    this.data = data;
+    
+    // Position - start from center
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    this.x = cx + (Math.random() - 0.5) * 100;
+    this.y = cy + (Math.random() - 0.5) * 100;
+    
+    // Target position (will be calculated)
+    this.tx = this.x;
+    this.ty = this.y;
+    
+    // Velocity
+    this.vx = 0;
+    this.vy = 0;
+    
+    // Visual properties from metadata
+    this.baseSize = type === 'collection' ? 6 : 3;
+    this.size = this.baseSize;
+    
+    // Age affects opacity
+    const created = new Date(data.created_at || Date.now());
+    const age = (Date.now() - created) / (1000 * 60 * 60 * 24); // days
+    this.age = age;
+    this.baseAlpha = Math.max(0.3, 1 - (age / 365)); // fade over a year
+    this.alpha = this.baseAlpha;
+    
+    // Type affects color
+    if (type === 'collection') {
+      this.hue = 180; // teal
+      this.saturation = 30;
+    } else {
+      // Documents vary by type
+      const docType = data.type?.toLowerCase() || '';
+      if (docType.includes('checklist')) {
+        this.hue = 160; // green-ish
+        this.saturation = 40;
+      } else if (docType.includes('contract') || docType.includes('legal')) {
+        this.hue = 200; // blue-ish
+        this.saturation = 25;
+      } else {
+        this.hue = 40; // warm neutral
+        this.saturation = 15;
+      }
+    }
+    
+    // Breathing offset
+    this.breatheOffset = Math.random() * Math.PI * 2;
+    this.breatheSpeed = 0.5 + Math.random() * 0.5;
+    
+    // Drift
+    this.driftAngle = Math.random() * Math.PI * 2;
+    this.driftSpeed = 0.1 + Math.random() * 0.2;
+    
+    // For collections - members
+    this.members = [];
+    
+    // Parent collection (for documents)
+    this.parentId = null;
+  }
+  
+  update(time) {
+    // Breathing
+    const breathe = Math.sin(time * this.breatheSpeed + this.breatheOffset);
+    this.size = this.baseSize + breathe * (this.baseSize * 0.2);
+    
+    // Drift
+    this.driftAngle += 0.001;
+    const driftX = Math.cos(this.driftAngle) * this.driftSpeed;
+    const driftY = Math.sin(this.driftAngle) * this.driftSpeed;
+    
+    // Attraction to cursor (attention field)
+    const dx = mouse.x - this.x;
+    const dy = mouse.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    // Particles within attention radius are drawn toward cursor
+    const attentionRadius = 200;
+    if (dist < attentionRadius && dist > 0) {
+      const force = (1 - dist / attentionRadius) * 0.3;
+      this.vx += (dx / dist) * force;
+      this.vy += (dy / dist) * force;
+      
+      // Brighten when attended
+      this.alpha = Math.min(1, this.baseAlpha + (1 - dist / attentionRadius) * 0.5);
+    } else {
+      // Return to base alpha
+      this.alpha += (this.baseAlpha - this.alpha) * 0.05;
+    }
+    
+    // Gravity toward parent (for documents in collections)
+    if (this.parentId && this.type === 'document') {
+      const parent = particles.find(p => p.id === this.parentId);
+      if (parent) {
+        const pdx = parent.x - this.x;
+        const pdy = parent.y - this.y;
+        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+        if (pdist > 50) {
+          this.vx += (pdx / pdist) * 0.1;
+          this.vy += (pdy / pdist) * 0.1;
+        }
+      }
+    }
+    
+    // Move toward target with easing
+    this.vx += (this.tx - this.x) * 0.01;
+    this.vy += (this.ty - this.y) * 0.01;
+    
+    // Add drift
+    this.vx += driftX * 0.1;
+    this.vy += driftY * 0.1;
+    
+    // Friction
+    this.vx *= 0.95;
+    this.vy *= 0.95;
+    
+    // Apply velocity
+    this.x += this.vx;
+    this.y += this.vy;
+    
+    // Bounds (soft)
+    const margin = 100;
+    if (this.x < margin) this.vx += 0.5;
+    if (this.x > window.innerWidth - margin) this.vx -= 0.5;
+    if (this.y < margin) this.vy += 0.5;
+    if (this.y > window.innerHeight - margin) this.vy -= 0.5;
+  }
+  
+  draw(ctx) {
+    // Glow
+    const gradient = ctx.createRadialGradient(
+      this.x, this.y, 0,
+      this.x, this.y, this.size * 4
+    );
+    gradient.addColorStop(0, `hsla(${this.hue}, ${this.saturation}%, 70%, ${this.alpha * 0.3})`);
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Core
+    ctx.fillStyle = `hsla(${this.hue}, ${this.saturation}%, 80%, ${this.alpha})`;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  containsPoint(x, y) {
+    const dx = x - this.x;
+    const dy = y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < Math.max(20, this.size * 3);
+  }
 }
 
+// === CANVAS ===
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  distributeParticles();
+}
+
+window.addEventListener('resize', resize);
+
+// === ANIMATION ===
+let animationTime = 0;
+
+function animate() {
+  animationTime += 0.016;
+  
+  // Clear with fade (creates trails)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw connections between related particles
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.lineWidth = 1;
+  particles.forEach(p => {
+    if (p.type === 'document' && p.parentId) {
+      const parent = particles.find(pp => pp.id === p.parentId);
+      if (parent) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(parent.x, parent.y);
+        ctx.stroke();
+      }
+    }
+  });
+  
+  // Update and draw particles
+  particles.forEach(p => {
+    p.update(animationTime);
+    p.draw(ctx);
+  });
+  
+  // Check hover
+  checkHover();
+  
+  requestAnimationFrame(animate);
+}
+
+function checkHover() {
+  let found = null;
+  
+  // Check in reverse (top particles first)
+  for (let i = particles.length - 1; i >= 0; i--) {
+    if (particles[i].containsPoint(mouse.x, mouse.y)) {
+      found = particles[i];
+      break;
+    }
+  }
+  
+  if (found !== hoveredParticle) {
+    hoveredParticle = found;
+    updatePresence();
+    updateWhisper();
+  }
+}
+
+function updatePresence() {
+  const presence = document.getElementById('presence');
+  presence.classList.toggle('hovering', hoveredParticle !== null);
+}
+
+function updateWhisper() {
+  const whisper = document.getElementById('whisper');
+  
+  if (hoveredParticle) {
+    whisper.textContent = hoveredParticle.name;
+    whisper.style.left = hoveredParticle.x + 'px';
+    whisper.style.top = (hoveredParticle.y - 60) + 'px';
+    whisper.classList.add('visible');
+  } else {
+    whisper.classList.remove('visible');
+  }
+}
+
+// === MOUSE ===
+document.addEventListener('mousemove', e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  
+  const presence = document.getElementById('presence');
+  presence.style.left = e.clientX + 'px';
+  presence.style.top = e.clientY + 'px';
+});
+
+document.addEventListener('click', e => {
+  if (isDeepOpen) {
+    closeDeep();
+    return;
+  }
+  
+  if (hoveredParticle) {
+    openParticle(hoveredParticle);
+  }
+});
+
+// === KEYBOARD ===
+document.addEventListener('keydown', e => {
+  if (isDeepOpen) {
+    if (e.key === 'Escape') closeDeep();
+    return;
+  }
+  
+  if (e.key === 'Escape') {
+    if (isInvokeOpen) {
+      closeInvoke();
+    }
+    return;
+  }
+  
+  // Any letter/number key opens invoke
+  if (!isInvokeOpen && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    openInvoke(e.key);
+    e.preventDefault();
+  }
+});
+
+function openInvoke(initialChar = '') {
+  isInvokeOpen = true;
+  const invoke = document.getElementById('invoke');
+  const input = document.getElementById('invokeInput');
+  invoke.classList.add('active');
+  document.getElementById('hint').classList.add('hidden');
+  input.value = initialChar;
+  input.focus();
+  
+  input.onkeydown = e => {
+    if (e.key === 'Enter') {
+      handleInvoke(input.value);
+      closeInvoke();
+    } else if (e.key === 'Escape') {
+      closeInvoke();
+    }
+  };
+}
+
+function closeInvoke() {
+  isInvokeOpen = false;
+  const invoke = document.getElementById('invoke');
+  const input = document.getElementById('invokeInput');
+  invoke.classList.remove('active');
+  document.getElementById('hint').classList.remove('hidden');
+  input.value = '';
+  input.blur();
+}
+
+function handleInvoke(text) {
+  const lower = text.toLowerCase().trim();
+  
+  if (!lower) return;
+  
+  if (lower.includes('new') || lower.includes('create')) {
+    createCollection(lower.replace(/new|create|collection/g, '').trim() || 'Untitled');
+  } else {
+    // Search particles
+    const match = particles.find(p => 
+      p.name.toLowerCase().includes(lower)
+    );
+    if (match) {
+      // Zoom to particle
+      match.tx = window.innerWidth / 2;
+      match.ty = window.innerHeight / 2;
+      setTimeout(() => openParticle(match), 500);
+    } else {
+      showMessage('nothing surfaces for "' + lower + '"');
+    }
+  }
+}
+
+// === PARTICLE INTERACTION ===
+async function openParticle(particle) {
+  selectedParticle = particle;
+  isDeepOpen = true;
+  
+  const presence = document.getElementById('presence');
+  presence.classList.add('focused');
+  
+  const deep = document.getElementById('deep');
+  const content = document.getElementById('deepContent');
+  
+  content.innerHTML = '<p style="color: rgba(255,255,255,0.3); font-style: italic;">surfacing...</p>';
+  deep.classList.add('open');
+  
+  if (particle.type === 'collection') {
+    await loadCollectionView(particle);
+  } else {
+    await loadDocumentView(particle);
+  }
+  
+  presence.classList.remove('focused');
+}
+
+async function loadCollectionView(particle) {
+  const content = document.getElementById('deepContent');
+  
+  try {
+    // Load members
+    const memberIds = await loadCollectionMembers(particle.id);
+    const docs = documents.filter(d => memberIds.includes(d.id));
+    
+    // Find checklist
+    let checklistDoc = null;
+    for (const doc of docs) {
+      if (doc.name.toLowerCase().includes('checklist') || doc.source?.endsWith('.md')) {
+        checklistDoc = doc;
+        break;
+      }
+    }
+    
+    if (checklistDoc) {
+      const docContent = await fetchDocContent(checklistDoc.source);
+      content.innerHTML = marked.parse(docContent);
+      styleContent(content);
+    } else {
+      content.innerHTML = `
+        <h1>${particle.name}</h1>
+        <p>${docs.length} documents within this field</p>
+        <p style="margin-top: 40px; color: rgba(255,255,255,0.3);">offer documents to generate awareness</p>
+      `;
+    }
+  } catch (err) {
+    content.innerHTML = '<p style="color: rgba(200,140,140,0.8);">could not surface</p>';
+  }
+}
+
+async function loadDocumentView(particle) {
+  const content = document.getElementById('deepContent');
+  
+  try {
+    const docContent = await fetchDocContent(particle.data.source);
+    content.innerHTML = marked.parse(docContent);
+    styleContent(content);
+  } catch (err) {
+    content.innerHTML = '<p style="color: rgba(200,140,140,0.8);">could not surface</p>';
+  }
+}
+
+function styleContent(container) {
+  container.querySelectorAll('td').forEach(td => {
+    const text = td.textContent.trim().toLowerCase();
+    if (text === 'complete') td.classList.add('complete');
+    else if (text === 'incomplete') td.classList.add('incomplete');
+    else if (text === 'partial') td.classList.add('partial');
+  });
+}
+
+function closeDeep() {
+  isDeepOpen = false;
+  selectedParticle = null;
+  document.getElementById('deep').classList.remove('open');
+}
+
+// === DRAG & DROP ===
+let dragCounter = 0;
+
+document.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dragCounter++;
+  document.body.classList.add('drop-active');
+});
+
+document.addEventListener('dragleave', e => {
+  e.preventDefault();
+  dragCounter--;
+  if (dragCounter === 0) {
+    document.body.classList.remove('drop-active');
+  }
+});
+
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+});
+
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  dragCounter = 0;
+  document.body.classList.remove('drop-active');
+  
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length) processFiles(files);
+});
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const files = Array.from(e.target.files);
+  if (files.length) processFiles(files);
+  e.target.value = '';
+});
+
+// === API ===
 async function api(endpoint, options = {}) {
   const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-    headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}`, 'Content-Type': 'application/json', ...options.headers },
+    headers: { 
+      'Authorization': `Bearer ${CONFIG.API_KEY}`, 
+      'Content-Type': 'application/json',
+      ...options.headers 
+    },
     ...options
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
@@ -899,44 +859,14 @@ async function api(endpoint, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-async function apiAuth(endpoint, options = {}) {
-  const token = await getAuthToken();
-  const res = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...options.headers },
-    ...options
+async function getAuthToken() {
+  const res = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
+    headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
   });
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error('Auth failed');
+  return (await res.json()).token;
 }
 
-// ===== INIT =====
-document.addEventListener('DOMContentLoaded', async () => {
-  setupDragDrop();
-  setupFileInput();
-  
-  try {
-    await loadCollections();
-    await loadDocuments();
-    setPresence(true);
-    renderField();
-  } catch (err) {
-    console.error('Init failed:', err);
-    setPresence(false);
-    showToast('Failed to connect', 'error');
-  }
-  
-  setTimeout(() => {
-    document.getElementById('loading').classList.add('hidden');
-  }, 800);
-});
-
-function setPresence(ok) {
-  document.getElementById('presenceDot').classList.toggle('offline', !ok);
-  document.getElementById('presenceText').textContent = ok ? 'Connected' : 'Offline';
-}
-
-// ===== DATA =====
 async function loadCollections() {
   const data = await api('/collections/search', {
     method: 'POST',
@@ -947,13 +877,13 @@ async function loadCollections() {
 
 async function loadDocuments() {
   const data = await api('/objects?limit=1000&offset=0');
-  allDocuments = (Array.isArray(data) ? data : data?.objects || [])
+  documents = (Array.isArray(data) ? data : data?.objects || [])
     .filter(o => o.content?.source)
     .map(o => ({
       id: o.id,
       name: o.name || 'Untitled',
       type: o.properties?.document_type || 'Document',
-      date: formatDate(o.created_at),
+      created_at: o.created_at,
       source: o.content?.source
     }));
 }
@@ -965,241 +895,6 @@ async function loadCollectionMembers(colId) {
   return collectionMembers[colId];
 }
 
-function formatDate(d) {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-// ===== FIELD RENDERING =====
-function renderField() {
-  const field = document.getElementById('field');
-  const existingNodes = field.querySelectorAll('.node');
-  existingNodes.forEach(n => n.remove());
-  
-  const centerGlyph = document.getElementById('centerGlyph');
-  centerGlyph.classList.toggle('has-content', collections.length > 0);
-  
-  if (collections.length === 0) return;
-  
-  // Arrange collections in a circle around center
-  const fieldRect = field.getBoundingClientRect();
-  const centerX = fieldRect.width / 2;
-  const centerY = fieldRect.height / 2 - 60; // offset for dialogue
-  const radius = Math.min(fieldRect.width, fieldRect.height) * 0.3;
-  
-  collections.slice(0, 8).forEach((col, i) => {
-    const angle = (i / Math.min(collections.length, 8)) * Math.PI * 2 - Math.PI / 2;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
-    
-    const node = createCollectionNode(col, x, y);
-    field.appendChild(node);
-    nodePositions.set(col.id, { x, y });
-  });
-  
-  // Draw connections (subtle lines from center to nodes)
-  drawConnections();
-}
-
-function createCollectionNode(col, x, y) {
-  const node = document.createElement('div');
-  node.className = 'node collection';
-  node.style.left = `${x - 36}px`;
-  node.style.top = `${y - 36}px`;
-  node.onclick = () => openCollection(col.id);
-  
-  node.innerHTML = `
-    <div class="node-inner">
-      <svg class="node-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-      </svg>
-    </div>
-    <span class="node-label">${col.name}</span>
-  `;
-  
-  // Animate in with delay
-  node.style.opacity = '0';
-  node.style.transform = 'scale(0.8)';
-  setTimeout(() => {
-    node.style.opacity = '1';
-    node.style.transform = 'scale(1)';
-  }, 100 + Math.random() * 300);
-  
-  return node;
-}
-
-function drawConnections() {
-  const svg = document.getElementById('connections');
-  const field = document.getElementById('field');
-  const fieldRect = field.getBoundingClientRect();
-  const centerX = fieldRect.width / 2;
-  const centerY = fieldRect.height / 2 - 60;
-  
-  svg.innerHTML = '';
-  
-  nodePositions.forEach((pos, id) => {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', centerX);
-    line.setAttribute('y1', centerY);
-    line.setAttribute('x2', pos.x);
-    line.setAttribute('y2', pos.y);
-    svg.appendChild(line);
-  });
-}
-
-// ===== DIALOGUE =====
-function handleDialogue(e) {
-  if (e.key !== 'Enter') return;
-  
-  const input = e.target;
-  const query = input.value.trim().toLowerCase();
-  if (!query) return;
-  
-  input.value = '';
-  
-  // Simple query handling
-  if (query.includes('new') || query.includes('create')) {
-    createNewCollection();
-  } else if (query.includes('recent') || query.includes('latest')) {
-    showRecent();
-  } else if (query.includes('all') || query.includes('show')) {
-    showAllCollections();
-  } else {
-    // Search collections
-    const match = collections.find(c => 
-      c.name.toLowerCase().includes(query)
-    );
-    if (match) {
-      openCollection(match.id);
-    } else {
-      setContext('Nothing found for "' + query + '"');
-    }
-  }
-}
-
-function setContext(text) {
-  const ctx = document.getElementById('dialogueContext');
-  ctx.textContent = text;
-  ctx.classList.add('visible');
-  setTimeout(() => ctx.classList.remove('visible'), 3000);
-}
-
-function showAllCollections() {
-  renderField();
-  setContext(collections.length + ' collections');
-}
-
-function showRecent() {
-  // Just show field, could be filtered
-  renderField();
-  setContext('Recent activity');
-}
-
-async function createNewCollection() {
-  const name = prompt('Name this collection:');
-  if (!name?.trim()) return;
-  
-  try {
-    const col = await apiAuth('/collections', {
-      method: 'POST',
-      body: JSON.stringify({ name: name.trim(), description: '', dynamic: false })
-    });
-    
-    if (col?.id) {
-      collections.unshift(col);
-      renderField();
-      showToast('Created "' + name + '"', 'success');
-      setTimeout(() => openCollection(col.id), 300);
-    }
-  } catch (err) {
-    showToast('Failed to create', 'error');
-  }
-}
-
-// ===== AWARENESS (Collection View) =====
-async function openCollection(colId) {
-  selectedCollection = collections.find(c => c.id === colId);
-  if (!selectedCollection) return;
-  
-  // Mark active node
-  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
-  const nodes = document.querySelectorAll('.node.collection');
-  nodes.forEach(n => {
-    if (n.querySelector('.node-label')?.textContent === selectedCollection.name) {
-      n.classList.add('active');
-    }
-  });
-  
-  document.getElementById('awarenessTitle').textContent = selectedCollection.name;
-  document.getElementById('awarenessMeta').textContent = 'Loading...';
-  document.getElementById('awarenessContent').innerHTML = '<p style="color: var(--light-ghost)">Loading...</p>';
-  document.getElementById('awarenessDocs').innerHTML = '';
-  
-  document.getElementById('awareness').classList.add('open');
-  
-  // Load members
-  await loadCollectionMembers(colId);
-  const memberIds = collectionMembers[colId] || [];
-  const docs = allDocuments.filter(d => memberIds.includes(d.id));
-  
-  document.getElementById('awarenessMeta').textContent = docs.length + ' documents';
-  
-  // Render doc list
-  const docsList = document.getElementById('awarenessDocs');
-  if (docs.length === 0) {
-    docsList.innerHTML = '<p style="font-size: 12px; color: var(--light-ghost); padding: 12px;">No documents yet</p>';
-  } else {
-    docsList.innerHTML = docs.map(doc => `
-      <div class="awareness-doc" onclick="viewDocument('${doc.id}')">
-        <div class="awareness-doc-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-        </div>
-        <div class="awareness-doc-info">
-          <div class="awareness-doc-name">${doc.name}</div>
-          <div class="awareness-doc-meta">${doc.date}</div>
-        </div>
-      </div>
-    `).join('');
-  }
-  
-  // Load checklist
-  await loadChecklist(colId);
-}
-
-async function loadChecklist(colId) {
-  const content = document.getElementById('awarenessContent');
-  
-  try {
-    const memberIds = collectionMembers[colId] || [];
-    
-    let checklistDoc = null;
-    for (const id of memberIds) {
-      const doc = allDocuments.find(d => d.id === id);
-      if (doc && (doc.name.toLowerCase().includes('checklist') || doc.source?.endsWith('.md'))) {
-        checklistDoc = doc;
-        break;
-      }
-    }
-    
-    if (checklistDoc) {
-      const docContent = await fetchDocContent(checklistDoc.source);
-      content.innerHTML = marked.parse(docContent);
-      styleStatusCells(content);
-    } else {
-      content.innerHTML = `
-        <h1>${selectedCollection.name}</h1>
-        <p>No checklist has been generated yet. Upload documents to create one automatically.</p>
-      `;
-    }
-  } catch (err) {
-    console.error('Checklist error:', err);
-    content.innerHTML = '<p style="color: var(--missing)">Failed to load</p>';
-  }
-}
-
 async function fetchDocContent(source) {
   const { url } = await api('/objects/download-url', {
     method: 'POST',
@@ -1209,153 +904,101 @@ async function fetchDocContent(source) {
   return await res.text();
 }
 
-function styleStatusCells(container) {
-  container.querySelectorAll('td').forEach(td => {
-    const text = td.textContent.trim().toLowerCase();
-    if (text === 'complete') td.classList.add('status-complete');
-    else if (text === 'incomplete') td.classList.add('status-incomplete');
-    else if (text === 'partial') td.classList.add('status-partial');
-  });
-}
-
-async function viewDocument(docId) {
-  const doc = allDocuments.find(d => d.id === docId);
-  if (!doc) return;
-  
-  const content = document.getElementById('awarenessContent');
-  content.innerHTML = '<p style="color: var(--light-ghost)">Loading...</p>';
-  
+async function createCollection(name) {
   try {
-    const docContent = await fetchDocContent(doc.source);
-    content.innerHTML = marked.parse(docContent);
-    styleStatusCells(content);
+    const jwt = await getAuthToken();
+    const res = await fetch(`${CONFIG.API_BASE}/collections`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${jwt}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({ name: name.trim(), description: '', dynamic: false })
+    });
+    
+    if (res.ok) {
+      const col = await res.json();
+      collections.push(col);
+      
+      // Add particle
+      const p = new Particle(col, 'collection');
+      p.tx = window.innerWidth / 2 + (Math.random() - 0.5) * 300;
+      p.ty = window.innerHeight / 2 + (Math.random() - 0.5) * 300;
+      particles.push(p);
+      
+      showMessage('"' + name + '" emerges');
+    }
   } catch (err) {
-    content.innerHTML = '<p style="color: var(--missing)">Failed to load</p>';
+    showMessage('could not create');
   }
 }
 
-function closeAwareness() {
-  document.getElementById('awareness').classList.remove('open');
-  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
-  selectedCollection = null;
-}
-
-// ===== FILE UPLOAD =====
-function setupDragDrop() {
-  const zone = document.getElementById('uploadZone');
-  const body = document.body;
-  
-  let dragCounter = 0;
-  
-  body.addEventListener('dragenter', e => {
-    e.preventDefault();
-    dragCounter++;
-    zone.classList.add('active');
-  });
-  
-  body.addEventListener('dragleave', e => {
-    e.preventDefault();
-    dragCounter--;
-    if (dragCounter === 0) {
-      zone.classList.remove('active');
-      zone.classList.remove('dragover');
-    }
-  });
-  
-  body.addEventListener('dragover', e => {
-    e.preventDefault();
-    zone.classList.add('dragover');
-  });
-  
-  body.addEventListener('drop', e => {
-    e.preventDefault();
-    dragCounter = 0;
-    zone.classList.remove('active');
-    zone.classList.remove('dragover');
-    
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length) handleFiles(files);
-  });
-}
-
-function setupFileInput() {
-  document.getElementById('fileInput').addEventListener('change', e => {
-    const files = Array.from(e.target.files);
-    if (files.length) handleFiles(files);
-    e.target.value = '';
-  });
-}
-
-async function handleFiles(files) {
+async function processFiles(files) {
   for (const file of files) {
     await processFile(file);
   }
 }
 
 async function processFile(file) {
-  const processing = document.getElementById('processing');
-  const processingText = document.getElementById('processingText');
-  
-  processing.classList.add('active');
-  processingText.textContent = `Processing ${file.name}...`;
+  showMessage('offering ' + file.name + '...');
   
   const mimeType = file.type || getMimeType(file.name);
   
   try {
-    const jwtRes = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
-      headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
-    });
-    if (!jwtRes.ok) throw new Error('Auth failed');
-    const jwt = (await jwtRes.json()).token;
-
-    const uploadRes = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
+    const jwt = await getAuthToken();
+    
+    const uploadRes = await api('/objects/upload-url', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: file.name, mime_type: mimeType })
     });
-    if (!uploadRes.ok) throw new Error('Upload URL failed');
-    const uploadData = await uploadRes.json();
-
-    await fetch(uploadData.url, {
+    
+    await fetch(uploadRes.url, {
       method: 'PUT',
       headers: { 'Content-Type': mimeType },
       body: file
     });
-
+    
     const createRes = await fetch(`${CONFIG.API_BASE}/objects`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${jwt}`, 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({
         name: file.name,
-        content: { source: uploadData.id, type: mimeType, name: file.name }
+        content: { source: uploadRes.id, type: mimeType, name: file.name }
       })
     });
-    if (!createRes.ok) throw new Error('Create failed');
+    
     const obj = await createRes.json();
-
+    
     // Add to documents
-    allDocuments.push({
+    const doc = {
       id: obj.id,
       name: file.name,
       type: 'Document',
-      date: formatDate(new Date().toISOString()),
-      source: uploadData.id
-    });
+      created_at: new Date().toISOString(),
+      source: uploadRes.id
+    };
+    documents.push(doc);
     
-    // If we have a selected collection, add to it
-    const targetCollection = selectedCollection ? selectedCollection.id : 'NEW';
+    // Create particle
+    const p = new Particle(doc, 'document');
+    p.x = mouse.x;
+    p.y = mouse.y;
+    p.tx = window.innerWidth / 2 + (Math.random() - 0.5) * 400;
+    p.ty = window.innerHeight / 2 + (Math.random() - 0.5) * 400;
+    particles.push(p);
     
-    if (selectedCollection) {
-      if (!collectionMembers[selectedCollection.id]) {
-        collectionMembers[selectedCollection.id] = [];
-      }
-      collectionMembers[selectedCollection.id].push(obj.id);
-    }
-
-    // Send to agent
+    // Process with agent
+    const targetCollection = selectedParticle?.type === 'collection' ? selectedParticle.id : 'NEW';
+    
     await fetch(`${CONFIG.API_BASE}/execute/async`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${jwt}`, 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,
@@ -1368,23 +1011,12 @@ async function processFile(file) {
         max_iterations: 100
       })
     });
-
-    processing.classList.remove('active');
-    showToast(`${file.name} surfaced`, 'success');
     
-    // Refresh if viewing a collection
-    if (selectedCollection) {
-      await openCollection(selectedCollection.id);
-    }
+    showMessage(file.name + ' surfaces');
     
-    // If new collection was created, refresh field
-    await loadCollections();
-    renderField();
-
   } catch (err) {
-    console.error('Upload error:', err);
-    processing.classList.remove('active');
-    showToast(`Failed: ${file.name}`, 'error');
+    console.error(err);
+    showMessage('could not offer ' + file.name);
   }
 }
 
@@ -1393,33 +1025,105 @@ function getMimeType(filename) {
   const types = {
     pdf: 'application/pdf',
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    doc: 'application/msword',
     txt: 'text/plain',
     md: 'text/markdown',
     png: 'image/png',
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    xls: 'application/vnd.ms-excel',
     csv: 'text/csv'
   };
   return types[ext] || 'application/octet-stream';
 }
 
-// ===== TOAST =====
-function showToast(msg, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = msg;
-  container.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+// === PARTICLES DISTRIBUTION ===
+function distributeParticles() {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  
+  // Collections in inner ring
+  const collectionParticles = particles.filter(p => p.type === 'collection');
+  const docParticles = particles.filter(p => p.type === 'document');
+  
+  const innerRadius = Math.min(window.innerWidth, window.innerHeight) * 0.2;
+  const outerRadius = Math.min(window.innerWidth, window.innerHeight) * 0.35;
+  
+  collectionParticles.forEach((p, i) => {
+    const angle = (i / collectionParticles.length) * Math.PI * 2 - Math.PI / 2;
+    p.tx = cx + Math.cos(angle) * innerRadius + (Math.random() - 0.5) * 50;
+    p.ty = cy + Math.sin(angle) * innerRadius + (Math.random() - 0.5) * 50;
+  });
+  
+  docParticles.forEach((p, i) => {
+    const angle = (i / docParticles.length) * Math.PI * 2;
+    p.tx = cx + Math.cos(angle) * outerRadius + (Math.random() - 0.5) * 100;
+    p.ty = cy + Math.sin(angle) * outerRadius + (Math.random() - 0.5) * 100;
+  });
 }
 
-// ===== RESIZE HANDLER =====
-window.addEventListener('resize', () => {
-  renderField();
-});
+function buildParticles() {
+  particles = [];
+  
+  // Collections as larger particles
+  collections.forEach(col => {
+    particles.push(new Particle(col, 'collection'));
+  });
+  
+  // Documents as smaller particles
+  documents.forEach(doc => {
+    particles.push(new Particle(doc, 'document'));
+  });
+  
+  distributeParticles();
+  
+  // Link documents to collections
+  linkParticles();
+}
+
+async function linkParticles() {
+  // Load all collection members and link documents
+  for (const col of collections) {
+    try {
+      const memberIds = await loadCollectionMembers(col.id);
+      particles.forEach(p => {
+        if (p.type === 'document' && memberIds.includes(p.id)) {
+          p.parentId = col.id;
+        }
+      });
+    } catch (err) {
+      // Ignore errors
+    }
+  }
+}
+
+// === MESSAGES ===
+function showMessage(text) {
+  const msg = document.getElementById('message');
+  msg.textContent = text;
+  msg.classList.add('visible');
+  setTimeout(() => msg.classList.remove('visible'), 3000);
+}
+
+// === INIT ===
+async function init() {
+  resize();
+  
+  try {
+    await loadCollections();
+    await loadDocuments();
+    buildParticles();
+  } catch (err) {
+    console.error('Init failed:', err);
+    showMessage('could not connect');
+  }
+  
+  setTimeout(() => {
+    document.getElementById('loading').classList.add('hidden');
+  }, 800);
+  
+  animate();
+}
+
+init();
 </script>
 </body>
 </html>

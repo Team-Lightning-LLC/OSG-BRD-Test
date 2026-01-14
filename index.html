@@ -633,6 +633,27 @@
       animation: spin 1s linear infinite;
     }
     
+    .library-item-delete {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    
+    .library-item:hover .library-item-delete {
+      opacity: 1;
+    }
+    
+    .library-item-delete:hover {
+      background: #fdf0ef;
+      color: #dc3545;
+    }
+    
     .library-empty {
       text-align: center;
       padding: 30px 16px;
@@ -1227,6 +1248,11 @@ function renderLibrary() {
         <div class="library-item-name" title="${doc.name}">${doc.name}</div>
         <div class="library-item-meta">${doc.date} · ${doc.type}</div>
       </div>
+      ${doc.processing ? '' : `
+        <button class="library-item-delete" onclick="event.stopPropagation(); deleteDocument('${doc.id}')" title="Remove from collection">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      `}
     </div>
   `).join('');
 }
@@ -1487,6 +1513,35 @@ async function viewDocument(docId) {
 
 function closeViewer() {
   document.getElementById('docViewer').close();
+}
+
+// ===== DOCUMENT MANAGEMENT =====
+async function deleteDocument(docId) {
+  const doc = allDocuments.find(d => d.id === docId);
+  if (!doc) return;
+  
+  if (!confirm(`Remove "${doc.name}" from this collection?`)) return;
+  
+  try {
+    // Remove from collection
+    if (selectedCollection) {
+      await api(`/collections/${selectedCollection.id}/members/${docId}`, {
+        method: 'DELETE'
+      });
+      
+      // Update local state
+      if (collectionMembers[selectedCollection.id]) {
+        collectionMembers[selectedCollection.id] = collectionMembers[selectedCollection.id].filter(id => id !== docId);
+      }
+    }
+    
+    renderLibrary();
+    showToast(`Removed "${doc.name}"`, 'success');
+    
+  } catch (err) {
+    console.error('Delete document failed:', err);
+    showToast('Failed to remove document', 'error');
+  }
 }
 
 // ===== FILE UPLOAD =====

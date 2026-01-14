@@ -611,6 +611,28 @@
     
     .library-item-meta { font-size: 10px; color: var(--muted); }
     
+    .library-item.processing {
+      opacity: 0.6;
+      cursor: default;
+    }
+    
+    .library-item.processing:hover {
+      background: transparent;
+    }
+    
+    .library-item.processing .library-item-name {
+      color: var(--muted);
+    }
+    
+    .library-item-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
     .library-empty {
       text-align: center;
       padding: 30px 16px;
@@ -1194,13 +1216,16 @@ function renderLibrary() {
   }
   
   container.innerHTML = filtered.map(doc => `
-    <div class="library-item" onclick="viewDocument('${doc.id}')">
+    <div class="library-item ${doc.processing ? 'processing' : ''}" ${doc.processing ? '' : `onclick="viewDocument('${doc.id}')"`}>
       <div class="library-item-icon">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        ${doc.processing 
+          ? '<div class="library-item-spinner"></div>'
+          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+        }
       </div>
       <div class="library-item-info">
         <div class="library-item-name" title="${doc.name}">${doc.name}</div>
-        <div class="library-item-meta">${doc.date} Â· ${doc.type}</div>
+        <div class="library-item-meta">${doc.date} · ${doc.type}</div>
       </div>
     </div>
   `).join('');
@@ -1558,6 +1583,26 @@ async function processFile(file) {
     const obj = await createRes.json();
     console.log('Object created! ID:', obj.id);
 
+    // Immediately add document to library (before agent processes)
+    const newDoc = {
+      id: obj.id,
+      name: file.name,
+      type: 'Processing...',
+      date: formatDate(new Date().toISOString()),
+      source: uploadData.id,
+      processing: true
+    };
+    allDocuments.push(newDoc);
+    
+    // If uploading to a specific collection, add to members and refresh library
+    if (selectedCollection) {
+      if (!collectionMembers[selectedCollection.id]) {
+        collectionMembers[selectedCollection.id] = [];
+      }
+      collectionMembers[selectedCollection.id].push(obj.id);
+      renderLibrary();
+    }
+
     // Step 5: Send object ID to agent for processing
     updateQueueStatus(queueId, 'Processing...', 'processing');
     
@@ -1591,6 +1636,14 @@ async function processFile(file) {
       throw new Error(`Agent failed: ${agentRes.status} - ${errText}`);
     }
     console.log('Sent to agent:', obj.id, '→', targetCollection);
+
+    // Update document state - remove processing flag
+    const docIndex = allDocuments.findIndex(d => d.id === obj.id);
+    if (docIndex !== -1) {
+      allDocuments[docIndex].processing = false;
+      allDocuments[docIndex].type = 'Document';
+      renderLibrary();
+    }
 
     updateQueueStatus(queueId, 'Complete', 'complete');
     const targetName = selectedCollection ? selectedCollection.name : 'New Collection';

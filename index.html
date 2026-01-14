@@ -3,457 +3,792 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSG Document Processing - PathB</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d2137'/%3E%3Crect x='2' y='24' width='28' height='3' rx='1.5' fill='%232a7d8c'/%3E%3Ctext x='16' y='19' text-anchor='middle' font-family='system-ui' font-size='13' font-weight='800' fill='white'%3EOSG%3C/text%3E%3C/svg%3E">
+  <title>OSG — Document Processing</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231a1a1a'/%3E%3Ctext x='16' y='20' text-anchor='middle' font-family='Georgia' font-size='12' fill='%23e8e4df'%3EOSG%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
-      --primary: #0d2137;
-      --primary-light: #1a3a5c;
-      --accent: #2a7d8c;
-      --accent-light: #3a9aad;
-      --accent-soft: #e6f3f5;
-      --ink: #1f2d3d;
-      --muted: #6c7a89;
-      --border: #dde2e8;
-      --bg: #f5f7f9;
-      --card: #ffffff;
-      --success: #28a745;
-      --success-soft: #e8f5e9;
-      --warning: #f0ad4e;
-      --warning-soft: #fef9e8;
-      --shadow: 0 2px 8px rgba(13,33,55,0.08);
-      --shadow-lg: 0 4px 16px rgba(13,33,55,0.12);
+      /* The palette of luminous emptiness */
+      --void: #0f0f0f;
+      --deep: #1a1a1a;
+      --surface: #faf9f7;
+      --surface-warm: #f5f3ef;
+      --surface-glow: #fffef9;
+      --ink: #1a1a1a;
+      --ink-soft: #4a4a4a;
+      --ink-muted: #8a8a8a;
+      --ink-ghost: #c5c5c5;
+      
+      /* The accent — warm teal, like deep water catching light */
+      --light: #2d8a8a;
+      --light-soft: #3a9e9e;
+      --light-glow: rgba(45, 138, 138, 0.08);
+      --light-ring: rgba(45, 138, 138, 0.15);
+      
+      /* States */
+      --complete: #5a9a6a;
+      --complete-soft: rgba(90, 154, 106, 0.1);
+      --warning: #c4956a;
+      --warning-soft: rgba(196, 149, 106, 0.1);
+      --error: #b86a6a;
+      --error-soft: rgba(184, 106, 106, 0.1);
+      
+      /* Typography */
+      --font-display: 'Cormorant Garamond', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, sans-serif;
+      
+      /* Spacing — generous, breathing */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 40px;
+      --space-2xl: 64px;
+      --space-3xl: 96px;
+      
+      /* Shadows — soft, ambient */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
+      --shadow-glow: 0 0 40px rgba(45, 138, 138, 0.1);
+      
+      /* Transitions — smooth, unhurried */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --duration-fast: 150ms;
+      --duration-normal: 300ms;
+      --duration-slow: 500ms;
+      
+      /* Border radius — soft, organic */
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 32px;
     }
     
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     
-    html, body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    body {
+      font-family: var(--font-body);
+      background: var(--surface);
       color: var(--ink);
-      height: 100%;
-      overflow: hidden;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
     
-    .app-container {
+    /* === LOADING STATE === */
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity var(--duration-slow) var(--ease-out);
+    }
+    
+    .loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loading-mark {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      color: var(--ink);
+      margin-bottom: var(--space-lg);
+      animation: breathe 2s var(--ease-in-out) infinite;
+    }
+    
+    .loading-text {
+      font-size: 0.875rem;
+      color: var(--ink-muted);
+      letter-spacing: 0.02em;
+    }
+    
+    @keyframes breathe {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+    
+    /* === MAIN LAYOUT === */
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+      opacity: 0;
+      animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+      animation-delay: 200ms;
+    }
+    
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    
+    /* === SIDEBAR === */
+    .sidebar {
+      background: var(--surface-warm);
+      border-right: 1px solid rgba(0,0,0,0.06);
       display: flex;
       flex-direction: column;
       height: 100vh;
-      overflow: hidden;
+      position: sticky;
+      top: 0;
     }
     
-    /* Header */
-    .header {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-      padding: 14px 32px;
+    .sidebar-header {
+      padding: var(--space-xl) var(--space-lg);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    
+    .brand {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      box-shadow: var(--shadow-lg);
-      flex-shrink: 0;
+      gap: var(--space-md);
     }
     
-    .logo-section {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    .logo {
-      width: 42px;
-      height: 42px;
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      background: var(--void);
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--surface);
+      letter-spacing: 0.05em;
     }
     
-    .logo svg {
-      width: 42px;
-      height: 42px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    .brand-text {
+      flex: 1;
     }
     
-    .brand-text { color: white; }
-    .brand-name { font-size: 18px; font-weight: 700; }
-    .brand-sub { font-size: 11px; opacity: 0.8; }
+    .brand-name {
+      font-family: var(--font-display);
+      font-size: 1.125rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
     
-    .header-status {
+    .brand-status {
+      font-size: 0.75rem;
+      color: var(--ink-muted);
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: white;
-      font-size: 13px;
+      gap: 6px;
+      margin-top: 2px;
     }
     
-    .status-dot {
-      width: 8px;
-      height: 8px;
+    .status-indicator {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: #4ade80;
+      background: var(--complete);
+      animation: pulse 2s var(--ease-in-out) infinite;
     }
     
-    .status-dot.disconnected { background: #f87171; }
+    .status-indicator.disconnected {
+      background: var(--error);
+      animation: none;
+    }
     
-    /* Main Container */
-    .main-container {
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Search */
+    .sidebar-search {
+      padding: var(--space-lg);
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: var(--space-md) var(--space-lg);
+      background: var(--surface);
+      border: 1px solid transparent;
+      border-radius: var(--radius-lg);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--ink);
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    
+    .search-input::placeholder {
+      color: var(--ink-ghost);
+    }
+    
+    .search-input:focus {
+      outline: none;
+      border-color: var(--light);
+      box-shadow: 0 0 0 3px var(--light-ring);
+    }
+    
+    /* Collections */
+    .sidebar-section {
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 20px 32px;
-      overflow: hidden;
-      max-width: 1400px;
-      width: 100%;
-      margin: 0 auto;
+      min-height: 0;
+      padding: 0 var(--space-md);
     }
     
-    /* Section Header */
     .section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
-      flex-shrink: 0;
+      padding: var(--space-sm) var(--space-sm);
+      margin-bottom: var(--space-sm);
     }
     
     .section-title {
-      font-size: 13px;
+      font-size: 0.6875rem;
       font-weight: 600;
-      color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.1em;
+      color: var(--ink-muted);
     }
     
-    /* Collections Scroll */
-    .collections-wrapper {
-      flex-shrink: 0;
-      margin-bottom: 20px;
-    }
-    
-    .collections-scroll {
-      display: flex;
-      gap: 14px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    
-    .collections-scroll::-webkit-scrollbar { height: 6px; }
-    .collections-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    
-    /* Collection Card */
-    .collection-card {
-      background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 18px;
-      min-width: 200px;
-      max-width: 200px;
+    .section-action {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--ink-muted);
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    
+    .section-action:hover {
+      background: var(--surface);
+      color: var(--ink);
+    }
+    
+    .collections-list {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: var(--space-lg);
+    }
+    
+    .collections-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .collections-list::-webkit-scrollbar-thumb {
+      background: var(--ink-ghost);
+      border-radius: 2px;
+    }
+    
+    .collection-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-md);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
       position: relative;
-      flex-shrink: 0;
+      margin-bottom: 2px;
     }
     
-    .collection-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
-    .collection-card.active { border-color: var(--accent); background: var(--accent-soft); }
-    
-    .collection-card.complete {
-      border-color: var(--success);
-      box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15);
+    .collection-item:hover {
+      background: var(--surface);
     }
     
-    .collection-card.complete:hover {
-      box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.25);
+    .collection-item.active {
+      background: var(--surface-glow);
+      box-shadow: var(--shadow-sm);
     }
     
-    .collection-card.new {
-      border-style: dashed;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 95px;
-      color: var(--muted);
+    .collection-item.complete {
+      opacity: 0.6;
     }
     
-    .collection-card.new:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-soft);
+    .collection-item.complete:hover {
+      opacity: 1;
     }
     
-    .collection-card.new svg { margin-bottom: 6px; }
-    
-    .card-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 6px;
-    }
-    
-    .card-icon {
-      width: 30px;
-      height: 30px;
-      background: var(--accent-soft);
-      border-radius: 8px;
+    .collection-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--light-glow);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--accent);
+      color: var(--light);
       flex-shrink: 0;
+      transition: all var(--duration-fast) var(--ease-out);
     }
     
-    .collection-card.complete .card-icon {
-      background: var(--success-soft);
-      color: var(--success);
+    .collection-item.complete .collection-icon {
+      background: var(--complete-soft);
+      color: var(--complete);
     }
     
-    .card-name {
-      font-size: 13px;
-      font-weight: 600;
+    .collection-item.active .collection-icon {
+      background: var(--light);
+      color: white;
+    }
+    
+    .collection-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .collection-name {
+      font-size: 0.875rem;
+      font-weight: 500;
       color: var(--ink);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      flex: 1;
     }
     
-    .card-pin {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--muted);
-      padding: 4px;
-      border-radius: 4px;
+    .collection-meta {
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
+    
+    .collection-actions {
+      display: flex;
+      gap: 2px;
       opacity: 0;
-      transition: all 0.15s;
+      transition: opacity var(--duration-fast) var(--ease-out);
     }
     
-    .collection-card:hover .card-pin { opacity: 1; }
-    .card-pin:hover { background: var(--bg); }
-    .card-pin.active { color: var(--warning); opacity: 1; }
+    .collection-item:hover .collection-actions {
+      opacity: 1;
+    }
     
-    .card-menu-btn {
-      position: absolute;
-      top: 6px;
-      right: 28px;
-      background: none;
+    .collection-action {
+      width: 24px;
+      height: 24px;
       border: none;
-      cursor: pointer;
-      color: var(--muted);
-      padding: 4px;
-      border-radius: 4px;
-      opacity: 0;
-      transition: all 0.15s;
-    }
-    
-    .collection-card:hover .card-menu-btn { opacity: 1; }
-    .card-menu-btn:hover { background: var(--bg); color: var(--ink); }
-    
-    .card-meta {
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    
-    .card-status { font-weight: 500; }
-    .card-status.active { color: var(--accent); }
-    .card-status.complete { color: var(--success); }
-    
-    .card-badge {
-      display: inline-block;
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 10px;
-      font-weight: 500;
-    }
-    
-    .card-badge.ready { background: var(--success-soft); color: var(--success); }
-    .card-badge.processing { background: var(--accent-soft); color: var(--accent); }
-    
-    /* Card Dropdown Menu */
-    .card-dropdown {
-      position: fixed;
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: var(--shadow-lg);
-      min-width: 140px;
-      z-index: 1000;
-      display: none;
-    }
-    
-    .card-dropdown.open { display: block; }
-    
-    .card-dropdown-item {
-      padding: 10px 14px;
-      font-size: 12px;
+      background: transparent;
+      color: var(--ink-muted);
+      border-radius: var(--radius-sm);
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    
+    .collection-action:hover {
+      background: rgba(0,0,0,0.05);
       color: var(--ink);
     }
     
-    .card-dropdown-item:first-child { border-radius: 8px 8px 0 0; }
-    .card-dropdown-item:last-child { border-radius: 0 0 8px 8px; }
-    .card-dropdown-item:hover { background: var(--bg); }
-    .card-dropdown-item.danger { color: #dc3545; }
-    .card-dropdown-item.danger:hover { background: #fdf0ef; }
-    .card-dropdown-item svg { width: 14px; height: 14px; }
-    
-    /* Main Grid */
-    .main-grid {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 360px;
-      gap: 20px;
-      min-height: 0;
-      overflow: hidden;
+    .collection-action.pinned {
+      color: var(--warning);
+      opacity: 1;
     }
     
-    /* Panel */
-    .panel {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+    /* New Collection Button */
+    .new-collection {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--ink-ghost);
+      background: transparent;
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      margin-top: var(--space-sm);
+      color: var(--ink-muted);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      width: 100%;
+    }
+    
+    .new-collection:hover {
+      border-color: var(--light);
+      color: var(--light);
+      background: var(--light-glow);
+    }
+    
+    /* === MAIN CONTENT === */
+    .main {
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      min-height: 0;
+      min-height: 100vh;
     }
     
-    .panel-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
+    /* Main Header */
+    .main-header {
+      padding: var(--space-xl) var(--space-2xl);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-shrink: 0;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
     
-    .panel-title {
-      font-size: 15px;
-      font-weight: 600;
+    .main-title {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 400;
       color: var(--ink);
+    }
+    
+    .main-title-empty {
+      color: var(--ink-muted);
+      font-style: italic;
+    }
+    
+    .main-actions {
       display: flex;
+      gap: var(--space-md);
+    }
+    
+    .btn {
+      padding: var(--space-sm) var(--space-lg);
+      border-radius: var(--radius-lg);
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
+      transition: all var(--duration-fast) var(--ease-out);
+      border: none;
     }
     
-    .panel-body {
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink-soft);
+    }
+    
+    .btn-ghost:hover {
+      background: rgba(0,0,0,0.04);
+      color: var(--ink);
+    }
+    
+    .btn-primary {
+      background: var(--light);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--light-soft);
+      box-shadow: var(--shadow-glow);
+    }
+    
+    /* Main Body */
+    .main-body {
       flex: 1;
-      padding: 18px;
-      overflow-y: auto;
-      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 0;
     }
     
-    /* Checklist Area */
-    .checklist-empty {
+    /* Content Area */
+    .content-area {
+      padding: var(--space-2xl);
+      overflow-y: auto;
+    }
+    
+    /* Empty State */
+    .empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100%;
-      min-height: 250px;
-      color: var(--muted);
+      min-height: 400px;
       text-align: center;
+      color: var(--ink-muted);
     }
     
-    .checklist-empty svg { margin-bottom: 16px; opacity: 0.4; }
-    .checklist-empty p { font-size: 14px; margin-bottom: 4px; }
-    .checklist-empty small { font-size: 12px; opacity: 0.7; }
-    
-    /* Markdown Checklist */
-    .checklist-content { font-size: 13px; line-height: 1.6; }
-    
-    .checklist-content h1 {
-      font-size: 18px;
-      color: var(--primary);
-      border-bottom: 2px solid var(--accent);
-      padding-bottom: 8px;
-      margin-bottom: 16px;
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--surface-warm);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-xl);
+      color: var(--ink-ghost);
     }
     
-    .checklist-content h2 {
-      font-size: 15px;
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--ink-soft);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .empty-text {
+      font-size: 0.875rem;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+    
+    /* Checklist Content */
+    .checklist {
+      max-width: 720px;
+      animation: slideUp var(--duration-normal) var(--ease-out);
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .checklist h1 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 500;
       color: var(--ink);
-      margin: 18px 0 10px;
-      padding-left: 10px;
-      border-left: 3px solid var(--accent);
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-md);
+      border-bottom: 2px solid var(--light);
     }
     
-    .checklist-content table {
+    .checklist h2 {
+      font-family: var(--font-display);
+      font-size: 1.125rem;
+      font-weight: 500;
+      color: var(--ink);
+      margin: var(--space-xl) 0 var(--space-md);
+      padding-left: var(--space-md);
+      border-left: 3px solid var(--light-glow);
+    }
+    
+    .checklist p {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: var(--ink-soft);
+      margin-bottom: var(--space-md);
+    }
+    
+    .checklist ul, .checklist ol {
+      margin: var(--space-md) 0;
+      padding-left: var(--space-xl);
+    }
+    
+    .checklist li {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: var(--ink-soft);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .checklist table {
       width: 100%;
       border-collapse: collapse;
-      margin: 14px 0;
-      font-size: 11px;
+      margin: var(--space-lg) 0;
+      font-size: 0.875rem;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
     }
     
-    .checklist-content th {
-      background: var(--primary);
-      color: white;
-      padding: 8px 10px;
+    .checklist th {
+      background: var(--deep);
+      color: var(--surface);
+      padding: var(--space-md) var(--space-lg);
       text-align: left;
-      font-weight: 600;
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     
-    .checklist-content td {
-      padding: 8px 10px;
-      border: 1px solid var(--border);
+    .checklist td {
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      color: var(--ink-soft);
     }
     
-    .checklist-content tr:nth-child(even) { background: var(--bg); }
+    .checklist tr:last-child td {
+      border-bottom: none;
+    }
     
-    /* Upload Section */
-    .upload-section { margin-bottom: 16px; flex-shrink: 0; }
+    .checklist tr:nth-child(even) {
+      background: var(--surface-warm);
+    }
     
+    .checklist td.status-complete {
+      color: var(--complete);
+      font-weight: 500;
+    }
+    
+    .checklist td.status-incomplete {
+      color: var(--error);
+    }
+    
+    .checklist td.status-partial {
+      color: var(--warning);
+    }
+    
+    /* Loading State */
+    .loading-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      color: var(--ink-muted);
+      gap: var(--space-md);
+    }
+    
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--ink-ghost);
+      border-top-color: var(--light);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* === UPLOAD PANEL === */
+    .upload-panel {
+      background: var(--surface-warm);
+      border-left: 1px solid rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 81px);
+      position: sticky;
+      top: 81px;
+    }
+    
+    .panel-header {
+      padding: var(--space-lg) var(--space-xl);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    
+    .panel-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    
+    .panel-body {
+      flex: 1;
+      padding: var(--space-xl);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Upload Zone */
     .upload-zone {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      padding: 24px 16px;
+      border: 2px dashed var(--ink-ghost);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl) var(--space-xl);
       text-align: center;
       cursor: pointer;
-      transition: all 0.15s ease;
-      background: var(--bg);
+      transition: all var(--duration-normal) var(--ease-out);
+      background: var(--surface);
+      margin-bottom: var(--space-lg);
     }
     
     .upload-zone:hover,
     .upload-zone.dragover {
-      border-color: var(--accent);
-      background: var(--accent-soft);
+      border-color: var(--light);
+      background: var(--light-glow);
     }
     
-    .upload-zone svg { color: var(--accent); margin-bottom: 10px; }
-    .upload-zone p { font-size: 13px; color: var(--ink); margin-bottom: 4px; }
-    .upload-zone small { font-size: 11px; color: var(--muted); }
-    .upload-zone input { display: none; }
+    .upload-zone.dragover {
+      transform: scale(1.02);
+    }
     
-    /* Upload Target Indicator */
+    .upload-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--light-glow);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-lg);
+      color: var(--light);
+      transition: all var(--duration-normal) var(--ease-out);
+    }
+    
+    .upload-zone:hover .upload-icon {
+      background: var(--light);
+      color: white;
+      transform: translateY(-4px);
+    }
+    
+    .upload-text {
+      font-size: 0.875rem;
+      color: var(--ink);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .upload-hint {
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+    }
+    
+    .upload-zone input {
+      display: none;
+    }
+    
+    /* Upload Target */
     .upload-target {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 10px;
-      padding: 8px 12px;
-      background: var(--bg);
-      border-radius: 6px;
-      font-size: 11px;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      font-size: 0.75rem;
+      margin-bottom: var(--space-lg);
     }
     
     .upload-target-label {
-      color: var(--muted);
+      color: var(--ink-muted);
     }
     
     .upload-target-name {
-      color: var(--accent);
-      font-weight: 600;
+      color: var(--light);
+      font-weight: 500;
     }
     
     .upload-target.no-collection .upload-target-name {
@@ -461,34 +796,51 @@
     }
     
     /* Upload Queue */
-    .upload-queue { margin-top: 12px; }
+    .upload-queue {
+      margin-bottom: var(--space-lg);
+    }
     
     .queue-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      background: var(--bg);
-      border-radius: 8px;
-      margin-bottom: 6px;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+      animation: slideIn var(--duration-fast) var(--ease-out);
     }
     
-    .queue-item-icon {
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    .queue-icon {
       width: 32px;
       height: 32px;
-      background: var(--accent-soft);
-      border-radius: 6px;
+      background: var(--light-glow);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--accent);
+      color: var(--light);
       flex-shrink: 0;
     }
     
-    .queue-item-info { flex: 1; min-width: 0; }
+    .queue-info {
+      flex: 1;
+      min-width: 0;
+    }
     
-    .queue-item-name {
-      font-size: 12px;
+    .queue-name {
+      font-size: 0.8125rem;
       font-weight: 500;
       color: var(--ink);
       white-space: nowrap;
@@ -496,105 +848,80 @@
       text-overflow: ellipsis;
     }
     
-    .queue-item-status { font-size: 10px; color: var(--muted); }
-    .queue-item-status.processing { color: var(--accent); }
-    .queue-item-status.complete { color: var(--success); }
-    .queue-item-status.error { color: #dc3545; }
+    .queue-status {
+      font-size: 0.6875rem;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
     
-    .queue-item-spinner {
+    .queue-status.processing { color: var(--light); }
+    .queue-status.complete { color: var(--complete); }
+    .queue-status.error { color: var(--error); }
+    
+    .queue-spinner {
       width: 16px;
       height: 16px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
+      border: 2px solid var(--ink-ghost);
+      border-top-color: var(--light);
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: spin 0.8s linear infinite;
       flex-shrink: 0;
     }
     
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .queue-check {
+      color: var(--complete);
+      flex-shrink: 0;
+    }
     
-    .queue-item-check { color: var(--success); flex-shrink: 0; }
-    
-    /* Library Section */
-    .library-section {
+    /* Library */
+    .library {
       flex: 1;
       display: flex;
       flex-direction: column;
       min-height: 0;
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-      margin-top: 14px;
+      border-top: 1px solid rgba(0,0,0,0.04);
+      padding-top: var(--space-lg);
     }
     
     .library-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
-      flex-shrink: 0;
+      margin-bottom: var(--space-md);
     }
     
     .library-title {
-      font-size: 13px;
+      font-size: 0.6875rem;
       font-weight: 600;
-      color: var(--ink);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    
-    .library-search { position: relative; }
-    
-    .library-search input {
-      padding: 5px 8px 5px 26px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 11px;
-      width: 120px;
-      background: var(--bg);
-    }
-    
-    .library-search input:focus {
-      outline: none;
-      border-color: var(--accent);
-      background: white;
-    }
-    
-    .library-search svg {
-      position: absolute;
-      left: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ink-muted);
     }
     
     .library-actions {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
     }
     
-    .library-add-btn {
-      width: 26px;
-      height: 26px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--bg);
-      color: var(--muted);
+    .library-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: var(--surface);
+      color: var(--ink-muted);
+      border-radius: var(--radius-sm);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
     }
     
-    .library-add-btn:hover:not(:disabled) {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-soft);
+    .library-btn:hover:not(:disabled) {
+      color: var(--light);
     }
     
-    .library-add-btn:disabled {
+    .library-btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
     }
@@ -602,37 +929,41 @@
     .library-list {
       flex: 1;
       overflow-y: auto;
-      min-height: 0;
     }
     
     .library-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: 6px;
+      gap: var(--space-md);
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-md);
       cursor: pointer;
-      transition: background 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
     }
     
-    .library-item:hover { background: var(--bg); }
+    .library-item:hover {
+      background: var(--surface);
+    }
     
     .library-item-icon {
-      width: 26px;
-      height: 26px;
-      background: var(--accent-soft);
-      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      background: var(--light-glow);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--accent);
+      color: var(--light);
       flex-shrink: 0;
     }
     
-    .library-item-info { flex: 1; min-width: 0; }
+    .library-item-info {
+      flex: 1;
+      min-width: 0;
+    }
     
     .library-item-name {
-      font-size: 12px;
+      font-size: 0.8125rem;
       font-weight: 500;
       color: var(--ink);
       white-space: nowrap;
@@ -640,10 +971,13 @@
       text-overflow: ellipsis;
     }
     
-    .library-item-meta { font-size: 10px; color: var(--muted); }
+    .library-item-meta {
+      font-size: 0.6875rem;
+      color: var(--ink-muted);
+    }
     
     .library-item.processing {
-      opacity: 0.6;
+      opacity: 0.5;
       cursor: default;
     }
     
@@ -651,28 +985,19 @@
       background: transparent;
     }
     
-    .library-item.processing .library-item-name {
-      color: var(--muted);
-    }
-    
-    .library-item-spinner {
-      width: 12px;
-      height: 12px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
     .library-item-delete {
-      background: none;
+      width: 20px;
+      height: 20px;
       border: none;
+      background: transparent;
+      color: var(--ink-ghost);
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      color: var(--muted);
-      padding: 4px;
-      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       opacity: 0;
-      transition: all 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
       flex-shrink: 0;
     }
     
@@ -681,302 +1006,206 @@
     }
     
     .library-item-delete:hover {
-      background: #fdf0ef;
-      color: #dc3545;
+      color: var(--error);
+      background: var(--error-soft);
     }
     
     .library-empty {
       text-align: center;
-      padding: 30px 16px;
-      color: var(--muted);
-      font-size: 12px;
+      padding: var(--space-xl);
+      color: var(--ink-muted);
+      font-size: 0.8125rem;
     }
     
-    /* Loading Overlay */
-    .loading-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(255,255,255,0.95);
+    /* === DIALOGS === */
+    dialog {
+      border: none;
+      border-radius: var(--radius-lg);
+      padding: 0;
+      box-shadow: var(--shadow-lg);
+      max-width: 90vw;
+      max-height: 85vh;
+      overflow: hidden;
+    }
+    
+    dialog::backdrop {
+      background: rgba(15, 15, 15, 0.6);
+      backdrop-filter: blur(4px);
+    }
+    
+    /* Document Viewer */
+    #docViewer {
+      width: min(800px, 90vw);
+      height: min(80vh, 700px);
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      transition: opacity 0.3s;
     }
-    
-    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-    
-    .loading-spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    
-    .loading-text { margin-top: 14px; color: var(--muted); font-size: 13px; }
-    
-    /* Toast */
-    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
-    
-    .toast {
-      background: var(--primary);
-      color: white;
-      padding: 12px 18px;
-      border-radius: 8px;
-      margin-top: 8px;
-      box-shadow: var(--shadow-lg);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      animation: slideIn 0.3s ease;
-    }
-    
-    .toast.success { background: var(--success); }
-    .toast.error { background: #dc3545; }
-    
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    
-    /* Button */
-    .btn {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      border: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    
-    .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--accent-light); }
-    .btn-secondary { background: var(--bg); color: var(--ink); border: 1px solid var(--border); }
-    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-    
-    /* Document Viewer Dialog */
-    dialog#docViewer {
-      width: min(900px, 90vw);
-      height: min(80vh, 700px);
-      border: 0;
-      border-radius: 12px;
-      padding: 0;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-      margin: auto;
-      position: fixed;
-      top: 75%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-    
-    dialog#docViewer::backdrop { background: rgba(13,33,55,0.6); }
     
     .viewer-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 20px;
-      background: var(--primary);
-      color: white;
+      padding: var(--space-lg) var(--space-xl);
+      background: var(--deep);
+      color: var(--surface);
     }
     
     .viewer-title {
-      font-size: 15px;
-      font-weight: 600;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       flex: 1;
-      margin-right: 16px;
+      margin-right: var(--space-lg);
     }
     
     .viewer-close {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: white;
       width: 32px;
       height: 32px;
-      border-radius: 6px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: var(--surface);
+      border-radius: var(--radius-sm);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: all var(--duration-fast) var(--ease-out);
     }
     
-    .viewer-close:hover { background: rgba(255,255,255,0.2); }
+    .viewer-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
     
     .viewer-body {
-      padding: 24px 32px;
+      flex: 1;
+      padding: var(--space-xl) var(--space-2xl);
       overflow-y: auto;
-      height: calc(100% - 60px);
-      font-size: 14px;
+      font-size: 0.9375rem;
       line-height: 1.7;
     }
     
     .viewer-body h1 {
-      font-size: 22px;
-      color: var(--primary);
-      border-bottom: 2px solid var(--accent);
-      padding-bottom: 10px;
-      margin: 24px 0 16px;
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--ink);
+      margin: var(--space-xl) 0 var(--space-lg);
+      border-bottom: 2px solid var(--light);
+      padding-bottom: var(--space-md);
     }
     
     .viewer-body h1:first-child { margin-top: 0; }
     
     .viewer-body h2 {
-      font-size: 17px;
-      color: var(--ink);
-      margin: 20px 0 12px;
-      border-left: 3px solid var(--accent);
-      padding-left: 12px;
+      font-family: var(--font-display);
+      font-size: 1.125rem;
+      font-weight: 500;
+      margin: var(--space-xl) 0 var(--space-md);
+      border-left: 3px solid var(--light);
+      padding-left: var(--space-md);
     }
     
-    .viewer-body h3 { font-size: 15px; margin: 16px 0 10px; }
-    .viewer-body p { margin-bottom: 14px; }
-    .viewer-body ul, .viewer-body ol { margin: 12px 0; padding-left: 24px; }
-    .viewer-body li { margin-bottom: 6px; }
+    .viewer-body p { margin-bottom: var(--space-md); color: var(--ink-soft); }
+    .viewer-body ul, .viewer-body ol { margin: var(--space-md) 0; padding-left: var(--space-xl); }
+    .viewer-body li { margin-bottom: var(--space-sm); color: var(--ink-soft); }
     
     .viewer-body table {
       width: 100%;
       border-collapse: collapse;
-      margin: 16px 0;
-      font-size: 13px;
+      margin: var(--space-lg) 0;
+      font-size: 0.875rem;
     }
     
     .viewer-body th {
-      background: var(--primary);
-      color: white;
-      padding: 10px 12px;
+      background: var(--deep);
+      color: var(--surface);
+      padding: var(--space-md) var(--space-lg);
       text-align: left;
+      font-weight: 500;
     }
     
     .viewer-body td {
-      padding: 10px 12px;
-      border: 1px solid var(--border);
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid rgba(0,0,0,0.06);
     }
     
-    .viewer-body tr:nth-child(even) { background: var(--bg); }
+    .viewer-body tr:nth-child(even) { background: var(--surface-warm); }
     
-    .viewer-body pre {
-      background: var(--bg);
-      padding: 14px;
-      border-radius: 8px;
-      overflow-x: auto;
-      font-size: 12px;
-    }
-    
-    .viewer-body code {
-      background: var(--bg);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-    
-    .viewer-loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 200px;
-      color: var(--muted);
-      gap: 12px;
-    }
-    
-    /* Document Picker Dialog */
-    dialog#docPicker {
-      width: min(600px, 90vw);
-      height: min(70vh, 500px);
-      border: 0;
-      border-radius: 12px;
-      padding: 0;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-      margin: auto;
+    /* Document Picker */
+    #docPicker {
+      width: min(560px, 90vw);
+      height: min(500px, 70vh);
       display: flex;
       flex-direction: column;
     }
-    
-    dialog#docPicker::backdrop { background: rgba(13,33,55,0.6); }
     
     .picker-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 20px;
-      background: var(--primary);
-      color: white;
-      flex-shrink: 0;
+      padding: var(--space-lg) var(--space-xl);
+      background: var(--deep);
+      color: var(--surface);
     }
     
     .picker-title {
-      font-size: 15px;
-      font-weight: 600;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 500;
     }
     
     .picker-search {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      position: relative;
-      flex-shrink: 0;
+      padding: var(--space-lg);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
     }
     
     .picker-search input {
       width: 100%;
-      padding: 8px 12px 8px 36px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 13px;
-      background: var(--bg);
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid transparent;
+      border-radius: var(--radius-lg);
+      background: var(--surface-warm);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
     }
     
     .picker-search input:focus {
       outline: none;
-      border-color: var(--accent);
-      background: white;
-    }
-    
-    .picker-search svg {
-      position: absolute;
-      left: 28px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
+      border-color: var(--light);
+      background: var(--surface);
     }
     
     .picker-body {
       flex: 1;
       overflow-y: auto;
-      padding: 8px;
+      padding: var(--space-md);
     }
     
     .picker-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      transition: background 0.15s;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      transition: background var(--duration-fast) var(--ease-out);
     }
     
-    .picker-item:hover { background: var(--bg); }
+    .picker-item:hover {
+      background: var(--surface-warm);
+    }
     
     .picker-item-icon {
       width: 32px;
       height: 32px;
-      background: var(--accent-soft);
-      border-radius: 6px;
+      background: var(--light-glow);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--accent);
+      color: var(--light);
       flex-shrink: 0;
     }
     
@@ -986,7 +1215,7 @@
     }
     
     .picker-item-name {
-      font-size: 13px;
+      font-size: 0.875rem;
       font-weight: 500;
       color: var(--ink);
       white-space: nowrap;
@@ -995,182 +1224,304 @@
     }
     
     .picker-item-meta {
-      font-size: 11px;
-      color: var(--muted);
-    }
-    
-    .picker-item-action {
-      flex-shrink: 0;
+      font-size: 0.75rem;
+      color: var(--ink-muted);
     }
     
     .picker-add-btn {
-      padding: 6px 12px;
-      border: 1px solid var(--accent);
-      border-radius: 6px;
-      background: white;
-      color: var(--accent);
-      font-size: 11px;
-      font-weight: 600;
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--light);
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--light);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all var(--duration-fast) var(--ease-out);
     }
     
     .picker-add-btn:hover {
-      background: var(--accent);
+      background: var(--light);
       color: white;
     }
     
     .picker-added {
-      padding: 6px 12px;
-      border-radius: 6px;
-      background: var(--success-soft);
-      color: var(--success);
-      font-size: 11px;
-      font-weight: 600;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-md);
+      background: var(--complete-soft);
+      color: var(--complete);
+      font-size: 0.75rem;
+      font-weight: 500;
     }
     
     .picker-empty {
       text-align: center;
-      padding: 40px 20px;
-      color: var(--muted);
-      font-size: 13px;
+      padding: var(--space-2xl);
+      color: var(--ink-muted);
+      font-size: 0.875rem;
+    }
+    
+    /* Context Menu */
+    .context-menu {
+      position: fixed;
+      background: var(--surface-glow);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      min-width: 160px;
+      z-index: 1000;
+      display: none;
+      overflow: hidden;
+    }
+    
+    .context-menu.open {
+      display: block;
+      animation: menuIn var(--duration-fast) var(--ease-out);
+    }
+    
+    @keyframes menuIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    .context-item {
+      padding: var(--space-md) var(--space-lg);
+      font-size: 0.8125rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      color: var(--ink);
+      transition: background var(--duration-fast) var(--ease-out);
+    }
+    
+    .context-item:hover {
+      background: var(--surface-warm);
+    }
+    
+    .context-item.danger {
+      color: var(--error);
+    }
+    
+    .context-item.danger:hover {
+      background: var(--error-soft);
+    }
+    
+    .context-item svg {
+      width: 14px;
+      height: 14px;
+    }
+    
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: var(--space-xl);
+      right: var(--space-xl);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    
+    .toast {
+      background: var(--deep);
+      color: var(--surface);
+      padding: var(--space-md) var(--space-xl);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      font-size: 0.875rem;
+      animation: toastIn var(--duration-normal) var(--ease-out);
+    }
+    
+    .toast.success { background: var(--complete); }
+    .toast.error { background: var(--error); }
+    
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    /* === RESPONSIVE === */
+    @media (max-width: 1024px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        display: none;
+      }
+      
+      .main-body {
+        grid-template-columns: 1fr;
+      }
+      
+      .upload-panel {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-      <div class="loading-spinner"></div>
-      <div class="loading-text" id="loadingText">Connecting to Vertesia...</div>
-    </div>
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-mark">OSG</div>
+    <div class="loading-text">Connecting...</div>
+  </div>
 
-    <!-- Header -->
-    <header class="header">
-      <div class="logo-section">
-        <div class="logo">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="6" fill="#0d2137"/>
-            <rect x="2" y="24" width="28" height="3" rx="1.5" fill="#2a7d8c"/>
-            <text x="16" y="19" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="800" fill="white" letter-spacing="0.5">OSG</text>
-          </svg>
-        </div>
-        <div class="brand-text">
-          <div class="brand-name">Document Processing</div>
-          <div class="brand-sub">Client Onboarding Automation</div>
-        </div>
-      </div>
-      <div class="header-status">
-        <div class="status-dot" id="statusDot"></div>
-        <span id="statusText">Connected</span>
-      </div>
-    </header>
-
-    <!-- Main Container -->
-    <div class="main-container">
-      <!-- Collections Section -->
-      <div class="collections-wrapper">
-        <div class="section-header">
-          <h2 class="section-title">Collections</h2>
-        </div>
-        <div class="collections-scroll" id="collectionsScroll">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Main Grid -->
-      <div class="main-grid">
-        <!-- Left: Checklist Panel -->
-        <div class="panel">
-          <div class="panel-header">
-            <h3 class="panel-title" id="collectionTitle">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              Select a Collection
-            </h3>
-            <button class="btn btn-secondary" onclick="refreshData()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-              Refresh
-            </button>
-          </div>
-          <div class="panel-body" id="checklistArea">
-            <div class="checklist-empty">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-              <p>Select a collection to view its checklist</p>
-              <small>Checklists are auto-generated from uploaded documents</small>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-mark">OSG</div>
+          <div class="brand-text">
+            <div class="brand-name">Document Processing</div>
+            <div class="brand-status">
+              <span class="status-indicator" id="statusIndicator"></span>
+              <span id="statusText">Connected</span>
             </div>
           </div>
         </div>
+      </div>
+      
+      <div class="sidebar-search">
+        <input type="text" class="search-input" placeholder="Search collections..." id="collectionSearch" oninput="renderCollections()">
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-header">
+          <span class="section-title">Collections</span>
+          <button class="section-action" onclick="createCollection()" title="New collection">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="collections-list" id="collectionsList">
+          <!-- Populated by JS -->
+        </div>
+        
+        <button class="new-collection" onclick="createCollection()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Collection
+        </button>
+      </div>
+    </aside>
 
-        <!-- Right: Upload & Library Panel -->
-        <div class="panel">
+    <!-- Main Content -->
+    <main class="main">
+      <header class="main-header">
+        <h1 class="main-title" id="mainTitle">
+          <span class="main-title-empty">Select a collection</span>
+        </h1>
+        <div class="main-actions">
+          <button class="btn btn-ghost" onclick="refreshData()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+      
+      <div class="main-body">
+        <div class="content-area" id="contentArea">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <h2 class="empty-title">No collection selected</h2>
+            <p class="empty-text">Select a collection from the sidebar to view its checklist and documents.</p>
+          </div>
+        </div>
+        
+        <div class="upload-panel">
           <div class="panel-header">
-            <h3 class="panel-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload Documents
-            </h3>
+            <h3 class="panel-title">Upload</h3>
           </div>
           <div class="panel-body">
-            <!-- Upload Zone -->
-            <div class="upload-section">
-              <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+              <div class="upload-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   <polyline points="17 8 12 3 7 8"/>
                   <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                <p>Click to upload or drag files here</p>
-                <small>PDF, DOCX, TXT, Images supported</small>
-                <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.md">
               </div>
-              <div class="upload-target" id="uploadTarget">
-                <span class="upload-target-label">Upload to:</span>
-                <span class="upload-target-name" id="uploadTargetName">New Collection (auto-create)</span>
-              </div>
-              <div class="upload-queue" id="uploadQueue"></div>
+              <p class="upload-text">Drop files here</p>
+              <p class="upload-hint">PDF, DOCX, TXT, Images</p>
+              <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.md">
             </div>
-
-            <!-- Library Section -->
-            <div class="library-section">
+            
+            <div class="upload-target" id="uploadTarget">
+              <span class="upload-target-label">Uploading to:</span>
+              <span class="upload-target-name" id="uploadTargetName">New Collection</span>
+            </div>
+            
+            <div class="upload-queue" id="uploadQueue"></div>
+            
+            <div class="library">
               <div class="library-header">
-                <h4 class="library-title">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span id="libraryTitle">Collection Library</span>
-                </h4>
+                <span class="library-title" id="libraryTitle">Documents</span>
                 <div class="library-actions">
-                  <button class="library-add-btn" id="libraryAddBtn" onclick="openDocumentPicker()" title="Add existing documents" disabled>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <button class="library-btn" id="libraryAddBtn" onclick="openDocumentPicker()" title="Add existing" disabled>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
                   </button>
-                  <div class="library-search">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" placeholder="Search..." id="librarySearch" oninput="renderLibrary()">
-                  </div>
                 </div>
               </div>
               <div class="library-list" id="libraryList">
-                <div class="library-empty">Select a collection to view documents</div>
+                <div class="library-empty">Select a collection</div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 
-  <!-- Card Dropdown Menu (positioned via JS) -->
-  <div class="card-dropdown" id="cardDropdown">
-    <div class="card-dropdown-item" onclick="renameCollection()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  <!-- Context Menu -->
+  <div class="context-menu" id="contextMenu">
+    <div class="context-item" onclick="renameCollection()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
       Rename
     </div>
-    <div class="card-dropdown-item" onclick="toggleCompleteCollection()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    <div class="context-item" onclick="toggleCompleteCollection()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
       <span id="completeMenuText">Mark Complete</span>
     </div>
-    <div class="card-dropdown-item danger" onclick="deleteCollection()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    <div class="context-item danger" onclick="deleteCollection()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
       Delete
     </div>
   </div>
@@ -1180,29 +1531,28 @@
     <div class="viewer-header">
       <span class="viewer-title" id="viewerTitle">Document</span>
       <button class="viewer-close" onclick="closeViewer()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
       </button>
     </div>
-    <div class="viewer-body" id="viewerBody">
-      <!-- Content rendered here -->
-    </div>
+    <div class="viewer-body" id="viewerBody"></div>
   </dialog>
 
   <!-- Document Picker Dialog -->
   <dialog id="docPicker">
     <div class="picker-header">
-      <span class="picker-title">Add Documents to Collection</span>
+      <span class="picker-title">Add Documents</span>
       <button class="viewer-close" onclick="closeDocumentPicker()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
       </button>
     </div>
     <div class="picker-search">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Search all documents..." id="pickerSearch" oninput="renderDocumentPicker()">
+      <input type="text" placeholder="Search documents..." id="pickerSearch" oninput="renderDocumentPicker()">
     </div>
-    <div class="picker-body" id="pickerBody">
-      <!-- Content rendered here -->
-    </div>
+    <div class="picker-body" id="pickerBody"></div>
   </dialog>
 
   <!-- Toast Container -->
@@ -1224,7 +1574,6 @@ let collections = [];
 let allDocuments = [];
 let selectedCollection = null;
 let collectionMembers = {};
-let processingJobs = [];
 let menuTargetCollection = null;
 
 // Persisted state
@@ -1240,7 +1589,6 @@ function saveCompleted() { localStorage.setItem(COMPLETE_KEY, JSON.stringify([..
 async function getAuthToken() {
   if (jwtToken && tokenExpiry && Date.now() < tokenExpiry) return jwtToken;
   
-  console.log('Getting JWT token...');
   const res = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
     headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
   });
@@ -1278,13 +1626,10 @@ async function apiAuth(endpoint, options = {}) {
 document.addEventListener('DOMContentLoaded', async () => {
   setupDragDrop();
   setupFileInput();
-  setupHorizontalScroll();
   setupClickOutside();
   
   try {
-    setLoadingText('Loading collections...');
     await loadCollections();
-    setLoadingText('Loading documents...');
     await loadDocuments();
     setStatus(true);
     renderCollections();
@@ -1294,14 +1639,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Failed to connect', 'error');
   }
   
-  hideLoading();
+  setTimeout(() => {
+    document.getElementById('loadingScreen').classList.add('hidden');
+  }, 600);
 });
 
-function setLoadingText(t) { document.getElementById('loadingText').textContent = t; }
-function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 function setStatus(ok) {
-  document.getElementById('statusDot').classList.toggle('disconnected', !ok);
-  document.getElementById('statusText').textContent = ok ? 'Connected' : 'Disconnected';
+  document.getElementById('statusIndicator').classList.toggle('disconnected', !ok);
+  document.getElementById('statusText').textContent = ok ? 'Connected' : 'Offline';
 }
 
 // ===== DATA LOADING =====
@@ -1311,7 +1656,6 @@ async function loadCollections() {
     body: JSON.stringify({ dynamic: false, status: 'active', limit: 100 })
   });
   collections = data || [];
-  console.log(`Loaded ${collections.length} collections`);
 }
 
 async function loadDocuments() {
@@ -1325,7 +1669,6 @@ async function loadDocuments() {
       date: formatDate(o.created_at),
       source: o.content?.source
     }));
-  console.log(`Loaded ${allDocuments.length} documents`);
 }
 
 async function loadCollectionMembers(colId) {
@@ -1349,14 +1692,20 @@ async function refreshData() {
   if (selectedCollection) {
     await selectCollection(selectedCollection.id);
   }
-  showToast('Data refreshed', 'success');
+  showToast('Updated', 'success');
 }
 
 // ===== RENDERING =====
 function renderCollections() {
-  const container = document.getElementById('collectionsScroll');
+  const container = document.getElementById('collectionsList');
+  const search = document.getElementById('collectionSearch').value.toLowerCase();
   
-  const sorted = [...collections].sort((a, b) => {
+  let filtered = collections.filter(c => {
+    if (!search) return true;
+    return c.name.toLowerCase().includes(search);
+  });
+  
+  const sorted = [...filtered].sort((a, b) => {
     const aPinned = pinnedCollections.has(a.id);
     const bPinned = pinnedCollections.has(b.id);
     const aComplete = completedCollections.has(a.id);
@@ -1369,87 +1718,84 @@ function renderCollections() {
     return 0;
   });
   
-  let html = `
-    <div class="collection-card new" onclick="createCollection()">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      <span style="font-size:12px;font-weight:500">New Collection</span>
-    </div>
-  `;
+  if (sorted.length === 0) {
+    container.innerHTML = `<div class="library-empty">${search ? 'No matches' : 'No collections yet'}</div>`;
+    return;
+  }
   
-  sorted.forEach(col => {
+  container.innerHTML = sorted.map(col => {
     const isActive = selectedCollection?.id === col.id;
     const isPinned = pinnedCollections.has(col.id);
     const isComplete = completedCollections.has(col.id);
-    const jobs = processingJobs.filter(j => j.collectionId === col.id && j.status === 'processing');
+    const memberCount = collectionMembers[col.id]?.length || 0;
     
-    html += `
-      <div class="collection-card ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}" 
-           onclick="selectCollection('${col.id}')" data-id="${col.id}">
-        <button class="card-pin ${isPinned ? 'active' : ''}" onclick="event.stopPropagation();togglePin('${col.id}')" title="Pin">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-        </button>
-        <button class="card-menu-btn" onclick="event.stopPropagation();openCardMenu('${col.id}', event)" title="More">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-        </button>
-        <div class="card-header">
-          <div class="card-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <div class="card-name" title="${col.name}">${col.name}</div>
+    return `
+      <div class="collection-item ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}" 
+           onclick="selectCollection('${col.id}')"
+           oncontextmenu="openContextMenu(event, '${col.id}')"
+           data-id="${col.id}">
+        <div class="collection-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
         </div>
-        <div class="card-meta">
-          <span class="card-status ${isComplete ? 'complete' : 'active'}">${isComplete ? 'Complete' : 'Active'}</span>
+        <div class="collection-info">
+          <div class="collection-name">${col.name}</div>
+          <div class="collection-meta">${isComplete ? 'Complete' : memberCount ? memberCount + ' docs' : 'Empty'}</div>
         </div>
-        ${jobs.length > 0 ? `<span class="card-badge processing">${jobs.length} processing</span>` : ''}
+        <div class="collection-actions">
+          <button class="collection-action ${isPinned ? 'pinned' : ''}" onclick="event.stopPropagation(); togglePin('${col.id}')" title="Pin">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+            </svg>
+          </button>
+          <button class="collection-action" onclick="event.stopPropagation(); openContextMenu(event, '${col.id}')" title="More">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+            </svg>
+          </button>
+        </div>
       </div>
     `;
-  });
-  
-  container.innerHTML = html;
+  }).join('');
 }
 
 function renderLibrary() {
   const container = document.getElementById('libraryList');
-  const search = document.getElementById('librarySearch').value.toLowerCase();
   
   if (!selectedCollection) {
-    container.innerHTML = '<div class="library-empty">Select a collection to view documents</div>';
-    document.getElementById('libraryTitle').textContent = 'Collection Library';
+    container.innerHTML = '<div class="library-empty">Select a collection</div>';
+    document.getElementById('libraryTitle').textContent = 'Documents';
     return;
   }
   
-  document.getElementById('libraryTitle').textContent = `${selectedCollection.name} Library`;
+  document.getElementById('libraryTitle').textContent = 'Documents';
   
   const memberIds = collectionMembers[selectedCollection.id] || [];
   const docs = allDocuments.filter(d => memberIds.includes(d.id));
   
-  const filtered = docs.filter(d => {
-    if (!search) return true;
-    return d.name.toLowerCase().includes(search) || d.type.toLowerCase().includes(search);
-  });
-  
-  if (filtered.length === 0) {
-    container.innerHTML = `<div class="library-empty">${search ? 'No matching documents' : 'No documents in this collection'}</div>`;
+  if (docs.length === 0) {
+    container.innerHTML = '<div class="library-empty">No documents yet</div>';
     return;
   }
   
-  container.innerHTML = filtered.map(doc => `
+  container.innerHTML = docs.map(doc => `
     <div class="library-item ${doc.processing ? 'processing' : ''}" ${doc.processing ? '' : `onclick="viewDocument('${doc.id}')"`}>
       <div class="library-item-icon">
         ${doc.processing 
-          ? '<div class="library-item-spinner"></div>'
+          ? '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div>'
           : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
         }
       </div>
       <div class="library-item-info">
         <div class="library-item-name" title="${doc.name}">${doc.name}</div>
-        <div class="library-item-meta">${doc.date} · ${doc.type}</div>
+        <div class="library-item-meta">${doc.date}</div>
       </div>
       ${doc.processing ? '' : `
-        <button class="library-item-delete" onclick="event.stopPropagation(); deleteDocument('${doc.id}')" title="Remove from collection">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <button class="library-item-delete" onclick="event.stopPropagation(); deleteDocument('${doc.id}')" title="Remove">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
         </button>
       `}
     </div>
@@ -1462,10 +1808,8 @@ async function selectCollection(colId) {
   renderCollections();
   updateUploadTarget();
   
-  document.getElementById('collectionTitle').innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-    ${selectedCollection.name}
-  `;
+  document.getElementById('mainTitle').innerHTML = selectedCollection.name;
+  document.getElementById('libraryAddBtn').disabled = false;
   
   await loadCollectionMembers(colId);
   renderLibrary();
@@ -1475,22 +1819,19 @@ async function selectCollection(colId) {
 function updateUploadTarget() {
   const targetEl = document.getElementById('uploadTarget');
   const nameEl = document.getElementById('uploadTargetName');
-  const addBtn = document.getElementById('libraryAddBtn');
   
   if (selectedCollection) {
     nameEl.textContent = selectedCollection.name;
     targetEl.classList.remove('no-collection');
-    addBtn.disabled = false;
   } else {
-    nameEl.textContent = 'New Collection (auto-create)';
+    nameEl.textContent = 'New Collection';
     targetEl.classList.add('no-collection');
-    addBtn.disabled = true;
   }
 }
 
 async function loadChecklist(colId) {
-  const area = document.getElementById('checklistArea');
-  area.innerHTML = `<div class="viewer-loading"><div class="loading-spinner" style="width:24px;height:24px;border-width:2px"></div><span>Loading checklist...</span></div>`;
+  const area = document.getElementById('contentArea');
+  area.innerHTML = `<div class="loading-content"><div class="spinner"></div><span>Loading...</span></div>`;
   
   try {
     const memberIds = collectionMembers[colId] || [];
@@ -1506,31 +1847,33 @@ async function loadChecklist(colId) {
     
     if (checklistDoc) {
       const content = await fetchDocContent(checklistDoc.source);
-      area.innerHTML = `<div class="checklist-content">${marked.parse(content)}</div>`;
+      area.innerHTML = `<div class="checklist">${marked.parse(content)}</div>`;
       styleStatusCells(area);
     } else {
       area.innerHTML = `
-        <div class="checklist-empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-          </svg>
-          <p>No checklist found</p>
-          <small>Upload documents to auto-generate a checklist</small>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">No checklist yet</h2>
+          <p class="empty-text">Upload documents to automatically generate a checklist for this collection.</p>
         </div>
       `;
     }
   } catch (err) {
     console.error('Checklist load error:', err);
-    area.innerHTML = `<div class="checklist-empty"><p style="color:#dc3545">Failed to load checklist</p></div>`;
+    area.innerHTML = `<div class="empty-state"><p style="color:var(--error)">Failed to load checklist</p></div>`;
   }
 }
 
 function styleStatusCells(container) {
   container.querySelectorAll('td').forEach(td => {
     const text = td.textContent.trim().toLowerCase();
-    if (text === 'complete') { td.style.color = 'var(--success)'; td.style.fontWeight = '600'; }
-    else if (text === 'incomplete') { td.style.color = '#dc3545'; }
-    else if (text === 'partial') { td.style.color = 'var(--warning)'; }
+    if (text === 'complete') td.classList.add('status-complete');
+    else if (text === 'incomplete') td.classList.add('status-incomplete');
+    else if (text === 'partial') td.classList.add('status-partial');
   });
 }
 
@@ -1544,7 +1887,7 @@ async function fetchDocContent(source) {
 }
 
 async function createCollection() {
-  const name = prompt('Enter collection name:');
+  const name = prompt('Collection name:');
   if (!name?.trim()) return;
   
   try {
@@ -1563,7 +1906,7 @@ async function createCollection() {
     showToast(`Created "${name}"`, 'success');
   } catch (err) {
     console.error('Create failed:', err);
-    showToast('Failed to create collection', 'error');
+    showToast('Failed to create', 'error');
   }
 }
 
@@ -1577,34 +1920,33 @@ function togglePin(colId) {
   renderCollections();
 }
 
-// ===== CARD MENU =====
-function openCardMenu(colId, event) {
-  const dropdown = document.getElementById('cardDropdown');
-  const rect = event.target.getBoundingClientRect();
+// ===== CONTEXT MENU =====
+function openContextMenu(event, colId) {
+  event.preventDefault();
+  event.stopPropagation();
   
+  const menu = document.getElementById('contextMenu');
   menuTargetCollection = collections.find(c => c.id === colId);
-  console.log('Opening menu for:', colId, 'Found:', menuTargetCollection);
   
   const isComplete = completedCollections.has(colId);
   document.getElementById('completeMenuText').textContent = isComplete ? 'Reopen' : 'Mark Complete';
   
-  dropdown.style.top = (rect.bottom + 4) + 'px';
-  dropdown.style.left = (rect.left - 100) + 'px';
-  dropdown.classList.add('open');
+  menu.style.top = event.clientY + 'px';
+  menu.style.left = event.clientX + 'px';
+  menu.classList.add('open');
 }
 
-function closeCardMenu() {
-  document.getElementById('cardDropdown').classList.remove('open');
+function closeContextMenu() {
+  document.getElementById('contextMenu').classList.remove('open');
   menuTargetCollection = null;
 }
 
 async function renameCollection() {
-  console.log('renameCollection called, target:', menuTargetCollection);
   if (!menuTargetCollection) return;
   const targetCol = menuTargetCollection;
-  closeCardMenu();
+  closeContextMenu();
   
-  const newName = prompt('Enter new name:', targetCol.name);
+  const newName = prompt('New name:', targetCol.name);
   if (!newName?.trim() || newName === targetCol.name) return;
   
   try {
@@ -1617,11 +1959,7 @@ async function renameCollection() {
     renderCollections();
     
     if (selectedCollection?.id === targetCol.id) {
-      document.getElementById('collectionTitle').innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        ${newName.trim()}
-      `;
-      renderLibrary();
+      document.getElementById('mainTitle').innerHTML = newName.trim();
     }
     
     showToast('Renamed', 'success');
@@ -1632,10 +1970,9 @@ async function renameCollection() {
 }
 
 function toggleCompleteCollection() {
-  console.log('toggleCompleteCollection called, target:', menuTargetCollection);
   if (!menuTargetCollection) return;
   const colId = menuTargetCollection.id;
-  closeCardMenu();
+  closeContextMenu();
   
   if (completedCollections.has(colId)) {
     completedCollections.delete(colId);
@@ -1651,12 +1988,11 @@ function toggleCompleteCollection() {
 }
 
 async function deleteCollection() {
-  console.log('deleteCollection called, target:', menuTargetCollection);
   if (!menuTargetCollection) return;
   const targetCol = menuTargetCollection;
-  closeCardMenu();
+  closeContextMenu();
   
-  if (!confirm(`Delete "${targetCol.name}"? This cannot be undone.`)) return;
+  if (!confirm(`Delete "${targetCol.name}"?`)) return;
   
   try {
     await api(`/collections/${targetCol.id}`, { method: 'DELETE' });
@@ -1670,16 +2006,16 @@ async function deleteCollection() {
     if (selectedCollection?.id === targetCol.id) {
       selectedCollection = null;
       updateUploadTarget();
-      document.getElementById('collectionTitle').innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        Select a Collection
-      `;
-      document.getElementById('checklistArea').innerHTML = `
-        <div class="checklist-empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-          </svg>
-          <p>Select a collection to view its checklist</p>
+      document.getElementById('mainTitle').innerHTML = '<span class="main-title-empty">Select a collection</span>';
+      document.getElementById('contentArea').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">No collection selected</h2>
+          <p class="empty-text">Select a collection from the sidebar to view its checklist and documents.</p>
         </div>
       `;
       renderLibrary();
@@ -1700,7 +2036,7 @@ async function viewDocument(docId) {
   
   const dialog = document.getElementById('docViewer');
   document.getElementById('viewerTitle').textContent = doc.name;
-  document.getElementById('viewerBody').innerHTML = `<div class="viewer-loading"><div class="loading-spinner" style="width:24px;height:24px;border-width:2px"></div><span>Loading...</span></div>`;
+  document.getElementById('viewerBody').innerHTML = `<div class="loading-content"><div class="spinner"></div><span>Loading...</span></div>`;
   
   dialog.showModal();
   
@@ -1708,8 +2044,7 @@ async function viewDocument(docId) {
     const content = await fetchDocContent(doc.source);
     document.getElementById('viewerBody').innerHTML = marked.parse(content);
   } catch (err) {
-    console.error('View error:', err);
-    document.getElementById('viewerBody').innerHTML = `<p style="color:#dc3545;text-align:center;padding:40px">Failed to load document</p>`;
+    document.getElementById('viewerBody').innerHTML = `<p style="color:var(--error);text-align:center;padding:40px">Failed to load</p>`;
   }
 }
 
@@ -1720,29 +2055,21 @@ function closeViewer() {
 // ===== DOCUMENT MANAGEMENT =====
 async function deleteDocument(docId) {
   const doc = allDocuments.find(d => d.id === docId);
-  if (!doc) return;
+  if (!doc || !selectedCollection) return;
   
-  if (!confirm(`Remove "${doc.name}" from this collection?`)) return;
+  if (!confirm(`Remove "${doc.name}"?`)) return;
   
   try {
-    // Remove from collection
-    if (selectedCollection) {
-      await api(`/collections/${selectedCollection.id}/members/${docId}`, {
-        method: 'DELETE'
-      });
-      
-      // Update local state
-      if (collectionMembers[selectedCollection.id]) {
-        collectionMembers[selectedCollection.id] = collectionMembers[selectedCollection.id].filter(id => id !== docId);
-      }
+    await api(`/collections/${selectedCollection.id}/members/${docId}`, { method: 'DELETE' });
+    
+    if (collectionMembers[selectedCollection.id]) {
+      collectionMembers[selectedCollection.id] = collectionMembers[selectedCollection.id].filter(id => id !== docId);
     }
     
     renderLibrary();
-    showToast(`Removed "${doc.name}"`, 'success');
-    
+    showToast('Removed', 'success');
   } catch (err) {
-    console.error('Delete document failed:', err);
-    showToast('Failed to remove document', 'error');
+    showToast('Failed to remove', 'error');
   }
 }
 
@@ -1750,10 +2077,9 @@ async function deleteDocument(docId) {
 function openDocumentPicker() {
   if (!selectedCollection) return;
   
-  const dialog = document.getElementById('docPicker');
   document.getElementById('pickerSearch').value = '';
   renderDocumentPicker();
-  dialog.showModal();
+  document.getElementById('docPicker').showModal();
 }
 
 function closeDocumentPicker() {
@@ -1764,13 +2090,11 @@ function renderDocumentPicker() {
   const container = document.getElementById('pickerBody');
   const search = document.getElementById('pickerSearch').value.toLowerCase();
   
-  // Get IDs already in collection
   const memberIds = selectedCollection ? (collectionMembers[selectedCollection.id] || []) : [];
   
-  // Filter all documents by search
   const filtered = allDocuments.filter(d => {
     if (!search) return true;
-    return d.name.toLowerCase().includes(search) || d.type.toLowerCase().includes(search);
+    return d.name.toLowerCase().includes(search);
   });
   
   if (filtered.length === 0) {
@@ -1783,18 +2107,19 @@ function renderDocumentPicker() {
     return `
       <div class="picker-item">
         <div class="picker-item-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
         </div>
         <div class="picker-item-info">
-          <div class="picker-item-name" title="${doc.name}">${doc.name}</div>
-          <div class="picker-item-meta">${doc.date} · ${doc.type}</div>
+          <div class="picker-item-name">${doc.name}</div>
+          <div class="picker-item-meta">${doc.date}</div>
         </div>
-        <div class="picker-item-action">
-          ${inCollection 
-            ? '<span class="picker-added">Added</span>'
-            : `<button class="picker-add-btn" onclick="addDocumentToCollection('${doc.id}')">Add</button>`
-          }
-        </div>
+        ${inCollection 
+          ? '<span class="picker-added">Added</span>'
+          : `<button class="picker-add-btn" onclick="addDocumentToCollection('${doc.id}')">Add</button>`
+        }
       </div>
     `;
   }).join('');
@@ -1809,22 +2134,18 @@ async function addDocumentToCollection(docId) {
       body: JSON.stringify({ id: docId })
     });
     
-    // Update local state
     if (!collectionMembers[selectedCollection.id]) {
       collectionMembers[selectedCollection.id] = [];
     }
     collectionMembers[selectedCollection.id].push(docId);
     
-    // Re-render both picker and library
     renderDocumentPicker();
     renderLibrary();
     
     const doc = allDocuments.find(d => d.id === docId);
-    showToast(`Added "${doc?.name || 'document'}"`, 'success');
-    
+    showToast(`Added "${doc?.name}"`, 'success');
   } catch (err) {
-    console.error('Add document failed:', err);
-    showToast('Failed to add document', 'error');
+    showToast('Failed to add', 'error');
   }
 }
 
@@ -1854,7 +2175,6 @@ function setupFileInput() {
 }
 
 async function handleFiles(files) {
-  console.log(`Processing ${files.length} files...`);
   for (const file of files) {
     await processFile(file);
   }
@@ -1867,73 +2187,50 @@ async function processFile(file) {
   const mimeType = file.type || getMimeType(file.name);
   
   try {
-    // Step 1: Get JWT token
-    updateQueueStatus(queueId, 'Authenticating...', 'processing');
+    updateQueueStatus(queueId, 'Uploading...', 'processing');
     const jwtRes = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
-      method: 'GET',
       headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
     });
-    if (!jwtRes.ok) throw new Error(`JWT failed: ${jwtRes.status}`);
+    if (!jwtRes.ok) throw new Error('Auth failed');
     const jwt = (await jwtRes.json()).token;
-    console.log('Got JWT');
 
-    // Step 2: Get upload URL
-    updateQueueStatus(queueId, 'Getting upload URL...', 'processing');
     const uploadRes = await fetch(`${CONFIG.API_BASE}/objects/upload-url`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${CONFIG.API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: file.name, mime_type: mimeType })
     });
-    if (!uploadRes.ok) throw new Error(`Upload URL failed: ${uploadRes.status}`);
+    if (!uploadRes.ok) throw new Error('Upload URL failed');
     const uploadData = await uploadRes.json();
-    console.log('Got upload URL, GCS path:', uploadData.id);
 
-    // Step 3: Upload to GCS
-    updateQueueStatus(queueId, 'Uploading file...', 'processing');
     const putRes = await fetch(uploadData.url, {
       method: 'PUT',
       headers: { 'Content-Type': mimeType },
       body: file
     });
-    if (!putRes.ok) throw new Error(`GCS upload failed: ${putRes.status}`);
-    console.log('File uploaded to GCS');
+    if (!putRes.ok) throw new Error('Upload failed');
 
-    // Step 4: Create object in Vertesia
-    updateQueueStatus(queueId, 'Creating object...', 'processing');
+    updateQueueStatus(queueId, 'Processing...', 'processing');
     const createRes = await fetch(`${CONFIG.API_BASE}/objects`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: file.name,
-        content: {
-          source: uploadData.id,
-          type: mimeType,
-          name: file.name
-        }
+        content: { source: uploadData.id, type: mimeType, name: file.name }
       })
     });
-    if (!createRes.ok) throw new Error(`Create object failed: ${createRes.status}`);
+    if (!createRes.ok) throw new Error('Create failed');
     const obj = await createRes.json();
-    console.log('Object created! ID:', obj.id);
 
-    // Immediately add document to library (before agent processes)
     const newDoc = {
       id: obj.id,
       name: file.name,
-      type: 'Processing...',
+      type: 'Document',
       date: formatDate(new Date().toISOString()),
       source: uploadData.id,
       processing: true
     };
     allDocuments.push(newDoc);
     
-    // If uploading to a specific collection, add to members and refresh library
     if (selectedCollection) {
       if (!collectionMembers[selectedCollection.id]) {
         collectionMembers[selectedCollection.id] = [];
@@ -1942,26 +2239,15 @@ async function processFile(file) {
       renderLibrary();
     }
 
-    // Step 5: Send object ID to agent for processing
-    updateQueueStatus(queueId, 'Processing...', 'processing');
-    
-    // Determine target collection - use selected collection or NEW for auto-creation
     const targetCollection = selectedCollection ? selectedCollection.id : 'NEW';
-    console.log('Target collection:', targetCollection, selectedCollection ? selectedCollection.name : '(new)');
     
-    const agentRes = await fetch(`${CONFIG.API_BASE}/execute/async`, {
+    await fetch(`${CONFIG.API_BASE}/execute/async`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,
-        data: { 
-          task: obj.id,
-          target_collection: targetCollection
-        },
+        data: { task: obj.id, target_collection: targetCollection },
         config: {
           environment: '681915c6a01fb262a410c161',
           model: 'publishers/anthropic/models/claude-sonnet-4'
@@ -1970,27 +2256,19 @@ async function processFile(file) {
         max_iterations: 100
       })
     });
-    if (!agentRes.ok) {
-      const errText = await agentRes.text();
-      throw new Error(`Agent failed: ${agentRes.status} - ${errText}`);
-    }
-    console.log('Sent to agent:', obj.id, '→', targetCollection);
 
-    // Update document state - remove processing flag
     const docIndex = allDocuments.findIndex(d => d.id === obj.id);
     if (docIndex !== -1) {
       allDocuments[docIndex].processing = false;
-      allDocuments[docIndex].type = 'Document';
       renderLibrary();
     }
 
     updateQueueStatus(queueId, 'Complete', 'complete');
-    const targetName = selectedCollection ? selectedCollection.name : 'New Collection';
-    showToast(`${file.name} → ${targetName}`, 'success');
+    showToast(`${file.name} uploaded`, 'success');
 
   } catch (err) {
     console.error('Upload error:', err);
-    updateQueueStatus(queueId, err.message, 'error');
+    updateQueueStatus(queueId, 'Failed', 'error');
     showToast(`Failed: ${file.name}`, 'error');
   }
 }
@@ -2013,21 +2291,23 @@ function getMimeType(filename) {
   return types[ext] || 'application/octet-stream';
 }
 
-// ===== QUEUE UI =====
 function addToQueue(id, name) {
   const queue = document.getElementById('uploadQueue');
   const item = document.createElement('div');
   item.className = 'queue-item';
   item.id = `queue-${id}`;
   item.innerHTML = `
-    <div class="queue-item-icon">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <div class="queue-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
     </div>
-    <div class="queue-item-info">
-      <div class="queue-item-name">${name}</div>
-      <div class="queue-item-status processing" id="status-${id}">Preparing...</div>
+    <div class="queue-info">
+      <div class="queue-name">${name}</div>
+      <div class="queue-status processing" id="status-${id}">Preparing...</div>
     </div>
-    <div class="queue-item-spinner" id="spinner-${id}"></div>
+    <div class="queue-spinner" id="spinner-${id}"></div>
   `;
   queue.appendChild(item);
 }
@@ -2038,33 +2318,23 @@ function updateQueueStatus(id, status, state = 'processing') {
   
   if (statusEl) {
     statusEl.textContent = status;
-    statusEl.className = `queue-item-status ${state}`;
+    statusEl.className = `queue-status ${state}`;
   }
   
   if (spinnerEl) {
     if (state === 'complete') {
-      spinnerEl.outerHTML = `<svg class="queue-item-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+      spinnerEl.outerHTML = `<svg class="queue-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
     } else if (state === 'error') {
-      spinnerEl.outerHTML = `<svg style="color:#dc3545" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+      spinnerEl.outerHTML = `<svg style="color:var(--error)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
     }
   }
 }
 
 // ===== UTILITY =====
-function setupHorizontalScroll() {
-  const scroll = document.getElementById('collectionsScroll');
-  scroll.addEventListener('wheel', e => {
-    if (e.deltaY !== 0) {
-      e.preventDefault();
-      scroll.scrollLeft += e.deltaY;
-    }
-  }, { passive: false });
-}
-
 function setupClickOutside() {
   document.addEventListener('click', e => {
-    if (!e.target.closest('.card-menu-btn') && !e.target.closest('.card-dropdown')) {
-      closeCardMenu();
+    if (!e.target.closest('.collection-action') && !e.target.closest('.context-menu')) {
+      closeContextMenu();
     }
   });
 }
@@ -2080,7 +2350,7 @@ function showToast(msg, type = 'info') {
     <span>${msg}</span>
   `;
   container.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 </script>
 </body>

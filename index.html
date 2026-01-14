@@ -4,364 +4,636 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>·</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='4' fill='%23888'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='4' fill='%23666'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --void: #050506;
+      --deep: #0a0a0c;
+      --surface: #12121a;
+      
+      --light: #e4e2df;
+      --light-70: rgba(228, 226, 223, 0.7);
+      --light-50: rgba(228, 226, 223, 0.5);
+      --light-30: rgba(228, 226, 223, 0.3);
+      --light-15: rgba(228, 226, 223, 0.15);
+      --light-08: rgba(228, 226, 223, 0.08);
+      --light-04: rgba(228, 226, 223, 0.04);
+      
+      --accent: #6eb5b5;
+      --accent-70: rgba(110, 181, 181, 0.7);
+      --accent-30: rgba(110, 181, 181, 0.3);
+      --accent-15: rgba(110, 181, 181, 0.15);
+      --accent-08: rgba(110, 181, 181, 0.08);
+      
+      --complete: #7ac492;
+      --complete-30: rgba(122, 196, 146, 0.3);
+      --incomplete: #c49a7a;
+      --incomplete-30: rgba(196, 154, 122, 0.3);
+      --processing: #9a7ac4;
+      --processing-30: rgba(154, 122, 196, 0.3);
+      
+      --font-serif: 'Crimson Pro', Georgia, serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
     
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      background: #000;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: var(--void); }
+    
+    body {
+      font-family: var(--font-mono);
+      color: var(--light);
       cursor: none;
+      user-select: none;
     }
     
-    /* Custom cursor - presence indicator */
-    .presence {
+    /* === PRESENCE (cursor) === */
+    #presence {
       position: fixed;
-      width: 80px;
-      height: 80px;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 50%;
       pointer-events: none;
-      transform: translate(-50%, -50%);
-      transition: 
-        width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-        height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-        border-color 0.3s ease;
       z-index: 1000;
+      transform: translate(-50%, -50%);
     }
     
-    .presence::after {
+    .presence-ring {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--light-15);
+      border-radius: 50%;
+      transition: all 0.4s var(--ease);
+    }
+    
+    .presence-ring::after {
       content: '';
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 4px;
-      height: 4px;
-      background: rgba(255,255,255,0.6);
+      width: 3px;
+      height: 3px;
+      background: var(--light-50);
       border-radius: 50%;
       transform: translate(-50%, -50%);
     }
     
-    .presence.hovering {
+    body.hovering .presence-ring {
+      width: 72px;
+      height: 72px;
+      border-color: var(--light-30);
+    }
+    
+    body.focusing .presence-ring {
       width: 120px;
       height: 120px;
-      border-color: rgba(255,255,255,0.3);
+      border-color: var(--accent-30);
     }
     
-    .presence.focused {
+    body.invoking .presence-ring {
       width: 200px;
       height: 200px;
-      border-color: rgba(140, 200, 200, 0.4);
+      border-color: var(--accent-30);
+      opacity: 0.5;
     }
     
-    /* The canvas */
-    canvas {
+    /* === CANVAS === */
+    #field {
       position: fixed;
       top: 0;
       left: 0;
     }
     
-    /* Whisper - minimal text that appears */
-    .whisper {
+    /* === REVEAL (hover info panel) === */
+    #reveal {
       position: fixed;
-      font-family: 'Cormorant', Georgia, serif;
-      font-size: 14px;
-      font-weight: 300;
-      font-style: italic;
-      color: rgba(255,255,255,0.4);
       pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.5s ease;
       z-index: 100;
-      max-width: 200px;
-      text-align: center;
-      transform: translate(-50%, -50%);
-    }
-    
-    .whisper.visible {
-      opacity: 1;
-    }
-    
-    /* The deep view - when entering a document */
-    .deep {
-      position: fixed;
-      inset: 0;
-      background: #000;
-      z-index: 500;
       opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(8px);
+      transition: all 0.3s var(--ease);
+      text-align: center;
+    }
+    
+    #reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .reveal-name {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--light-70);
+      margin-bottom: 4px;
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .reveal-meta {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--light-30);
+    }
+    
+    .reveal-status {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    
+    .reveal-status.complete { background: var(--complete); }
+    .reveal-status.incomplete { background: var(--incomplete); }
+    .reveal-status.processing { background: var(--processing); animation: pulse 1s ease infinite; }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    
+    /* === INVOKE (search/command) === */
+    #invoke {
+      position: fixed;
+      bottom: 48px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    #invokeInput {
+      width: 320px;
+      padding: 14px 24px;
+      background: var(--surface);
+      border: 1px solid var(--light-08);
+      border-radius: 28px;
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-style: italic;
+      color: var(--light);
+      text-align: center;
+      outline: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.4s var(--ease);
+    }
+    
+    #invokeInput::placeholder {
+      color: var(--light-30);
+    }
+    
+    #invokeInput:focus,
+    body.invoking #invokeInput {
+      opacity: 1;
+      transform: translateY(0);
+      border-color: var(--accent-30);
+    }
+    
+    #invokeHint {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--light-15);
+      transition: all 0.4s var(--ease);
+    }
+    
+    body.invoking #invokeHint {
+      opacity: 0;
+    }
+    
+    /* === CONTEXT (ambient info) === */
+    #context {
+      position: fixed;
+      top: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--light-15);
       display: flex;
       align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      gap: 12px;
+      z-index: 50;
     }
     
-    .deep.open {
+    #contextDot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: breathe 3s ease infinite;
+    }
+    
+    @keyframes breathe {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    
+    #contextDot.offline {
+      background: var(--incomplete);
+      animation: none;
+    }
+    
+    /* === DEEP VIEW === */
+    #deep {
+      position: fixed;
+      inset: 0;
+      background: var(--void);
+      z-index: 500;
+      display: flex;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s var(--ease);
+    }
+    
+    #deep.open {
       opacity: 1;
       pointer-events: all;
     }
     
-    .deep-content {
-      max-width: 680px;
-      max-height: 80vh;
-      padding: 60px;
-      overflow-y: auto;
-      font-family: 'Cormorant', Georgia, serif;
-      color: rgba(255,255,255,0.8);
+    .deep-nav {
+      width: 280px;
+      border-right: 1px solid var(--light-04);
+      padding: 64px 24px 24px;
+      display: flex;
+      flex-direction: column;
       opacity: 0;
-      transform: scale(0.95);
-      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
+      transform: translateX(-20px);
+      transition: all 0.5s var(--ease) 0.1s;
     }
     
-    .deep.open .deep-content {
+    #deep.open .deep-nav {
       opacity: 1;
-      transform: scale(1);
+      transform: translateX(0);
     }
     
-    .deep-content::-webkit-scrollbar {
-      width: 2px;
+    .deep-title {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--light-70);
+      margin-bottom: 4px;
     }
     
-    .deep-content::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.2);
+    .deep-subtitle {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--light-30);
+      margin-bottom: 32px;
+    }
+    
+    .deep-section-title {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--light-15);
+      margin-bottom: 12px;
+    }
+    
+    .deep-items {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    .deep-items::-webkit-scrollbar { width: 2px; }
+    .deep-items::-webkit-scrollbar-thumb { background: var(--light-08); }
+    
+    .deep-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    
+    .deep-item:hover {
+      background: var(--light-04);
+    }
+    
+    .deep-item-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--light-15);
+      flex-shrink: 0;
+    }
+    
+    .deep-item-name {
+      font-size: 12px;
+      color: var(--light-50);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .deep-item.active .deep-item-dot {
+      background: var(--accent);
+    }
+    
+    .deep-item.active .deep-item-name {
+      color: var(--light-70);
+    }
+    
+    .deep-main {
+      flex: 1;
+      padding: 64px;
+      overflow-y: auto;
+    }
+    
+    .deep-main::-webkit-scrollbar { width: 3px; }
+    .deep-main::-webkit-scrollbar-thumb { background: var(--light-08); }
+    
+    .deep-content {
+      max-width: 640px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s var(--ease) 0.2s;
+    }
+    
+    #deep.open .deep-content {
+      opacity: 1;
+      transform: translateY(0);
     }
     
     .deep-content h1 {
-      font-size: 32px;
+      font-family: var(--font-serif);
+      font-size: 28px;
       font-weight: 300;
-      margin-bottom: 40px;
-      color: rgba(255,255,255,0.9);
-      letter-spacing: 0.02em;
+      color: var(--light);
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--light-08);
     }
     
     .deep-content h2 {
-      font-size: 20px;
-      font-weight: 300;
-      margin: 40px 0 20px;
-      color: rgba(255,255,255,0.7);
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--light-70);
+      margin: 32px 0 16px;
     }
     
     .deep-content p {
-      font-size: 18px;
-      line-height: 1.9;
-      margin-bottom: 20px;
-      color: rgba(255,255,255,0.6);
+      font-family: var(--font-serif);
+      font-size: 16px;
+      line-height: 1.85;
+      color: var(--light-50);
+      margin-bottom: 16px;
     }
     
     .deep-content ul, .deep-content ol {
-      margin: 20px 0;
-      padding-left: 24px;
+      margin: 16px 0;
+      padding-left: 20px;
     }
     
     .deep-content li {
-      font-size: 18px;
+      font-family: var(--font-serif);
+      font-size: 16px;
       line-height: 1.8;
-      margin-bottom: 8px;
-      color: rgba(255,255,255,0.6);
+      color: var(--light-50);
+      margin-bottom: 6px;
     }
     
     .deep-content table {
       width: 100%;
       border-collapse: collapse;
-      margin: 30px 0;
+      margin: 24px 0;
     }
     
     .deep-content th {
-      font-size: 11px;
-      font-weight: 300;
-      letter-spacing: 0.15em;
+      font-size: 9px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.4);
-      padding: 12px 16px;
+      color: var(--light-30);
+      padding: 10px 14px;
       text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid var(--light-08);
     }
     
     .deep-content td {
-      font-size: 15px;
-      padding: 12px 16px;
-      color: rgba(255,255,255,0.6);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    
-    .deep-content .complete { color: rgba(140, 200, 160, 0.9); }
-    .deep-content .incomplete { color: rgba(200, 140, 140, 0.9); }
-    .deep-content .partial { color: rgba(200, 180, 140, 0.9); }
-    
-    .deep-escape {
-      position: fixed;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Cormorant', Georgia, serif;
-      font-size: 12px;
-      font-style: italic;
-      color: rgba(255,255,255,0.3);
-      letter-spacing: 0.1em;
-    }
-    
-    /* Input - appears at bottom when you start typing */
-    .invoke {
-      position: fixed;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 200;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-    
-    .invoke.active {
-      opacity: 1;
-      pointer-events: all;
-    }
-    
-    .invoke input {
-      width: 400px;
-      padding: 16px 24px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 30px;
-      font-family: 'Cormorant', Georgia, serif;
-      font-size: 16px;
-      font-style: italic;
-      color: rgba(255,255,255,0.8);
-      outline: none;
-      text-align: center;
-    }
-    
-    .invoke input::placeholder {
-      color: rgba(255,255,255,0.3);
-    }
-    
-    /* Ambient hint */
-    .hint {
-      position: fixed;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Cormorant', Georgia, serif;
       font-size: 13px;
-      font-style: italic;
-      color: rgba(255,255,255,0.15);
-      letter-spacing: 0.05em;
-      z-index: 50;
-      transition: opacity 0.5s ease;
+      padding: 10px 14px;
+      color: var(--light-50);
+      border-bottom: 1px solid var(--light-04);
     }
     
-    .hint.hidden {
+    .deep-content .status-complete { color: var(--complete); }
+    .deep-content .status-incomplete { color: var(--incomplete); }
+    .deep-content .status-partial { color: var(--incomplete-30); }
+    
+    .deep-close {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      width: 40px;
+      height: 40px;
+      background: transparent;
+      border: 1px solid var(--light-08);
+      border-radius: 50%;
+      color: var(--light-30);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 510;
       opacity: 0;
+      transition: all 0.3s var(--ease) 0.3s;
     }
     
-    /* Drop zone - subtle */
-    .drop-active::before {
+    #deep.open .deep-close {
+      opacity: 1;
+    }
+    
+    .deep-close:hover {
+      border-color: var(--light-15);
+      color: var(--light-50);
+    }
+    
+    /* === DROP ZONE === */
+    body.dropping::before {
       content: '';
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(140, 200, 200, 0.05) 0%, transparent 70%);
-      pointer-events: none;
+      background: radial-gradient(circle at center, var(--accent-08) 0%, transparent 60%);
       z-index: 400;
-      animation: dropPulse 1.5s ease infinite;
+      pointer-events: none;
+      animation: dropGlow 1.5s ease infinite;
     }
     
-    @keyframes dropPulse {
+    @keyframes dropGlow {
       0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
     }
     
-    .drop-active .hint {
-      color: rgba(140, 200, 200, 0.4);
+    #dropText {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-style: italic;
+      color: var(--accent-70);
+      z-index: 410;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
     
-    .drop-active .hint::after {
-      content: 'release to offer';
+    body.dropping #dropText {
+      opacity: 1;
     }
     
-    /* Loading */
-    .loading {
+    /* === MESSAGE === */
+    #message {
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-serif);
+      font-size: 13px;
+      font-style: italic;
+      color: var(--light-30);
+      z-index: 150;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    
+    #message.visible {
+      opacity: 1;
+    }
+    
+    /* === LOADING === */
+    #loading {
       position: fixed;
       inset: 0;
-      background: #000;
+      background: var(--void);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
-      transition: opacity 1s ease;
+      transition: opacity 1s var(--ease);
     }
     
-    .loading.hidden {
+    #loading.hidden {
       opacity: 0;
       pointer-events: none;
     }
     
     .loading-dot {
-      width: 8px;
-      height: 8px;
-      background: rgba(255,255,255,0.5);
+      width: 6px;
+      height: 6px;
+      background: var(--light-30);
       border-radius: 50%;
       animation: breathe 2s ease infinite;
     }
     
-    @keyframes breathe {
-      0%, 100% { opacity: 0.2; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.5); }
-    }
-    
-    /* Toast - minimal */
-    .message {
+    /* === EMPTY STATE === */
+    #empty {
       position: fixed;
-      top: 40px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Cormorant', Georgia, serif;
-      font-size: 14px;
-      font-style: italic;
-      color: rgba(255,255,255,0.5);
-      z-index: 600;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
       opacity: 0;
       transition: opacity 0.5s ease;
+      pointer-events: none;
     }
     
-    .message.visible {
+    #empty.visible {
       opacity: 1;
     }
+    
+    .empty-ring {
+      width: 100px;
+      height: 100px;
+      border: 1px dashed var(--light-08);
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .empty-text {
+      font-family: var(--font-serif);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--light-15);
+    }
+    
+    /* File input */
+    #fileInput { display: none; }
   </style>
 </head>
 <body>
-  <div class="loading" id="loading">
-    <div class="loading-dot"></div>
-  </div>
+  <div id="loading"><div class="loading-dot"></div></div>
   
-  <div class="presence" id="presence"></div>
+  <div id="presence"><div class="presence-ring"></div></div>
+  
   <canvas id="field"></canvas>
   
-  <div class="whisper" id="whisper"></div>
+  <div id="context">
+    <div id="contextDot"></div>
+    <span id="contextText">connected</span>
+  </div>
   
-  <div class="hint" id="hint">attend</div>
+  <div id="reveal">
+    <div class="reveal-name" id="revealName"></div>
+    <div class="reveal-meta" id="revealMeta"></div>
+  </div>
   
-  <div class="invoke" id="invoke">
+  <div id="invoke">
     <input type="text" id="invokeInput" placeholder="speak" autocomplete="off">
+    <div id="invokeHint">begin typing to invoke</div>
   </div>
   
-  <div class="deep" id="deep">
-    <div class="deep-content" id="deepContent"></div>
-    <div class="deep-escape">press anywhere to return</div>
+  <div id="empty">
+    <div class="empty-ring">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="color: var(--light-15)">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </div>
+    <div class="empty-text">drop to begin</div>
   </div>
   
-  <div class="message" id="message"></div>
+  <div id="deep">
+    <button class="deep-close" onclick="closeDeep()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div class="deep-nav">
+      <div class="deep-title" id="deepTitle"></div>
+      <div class="deep-subtitle" id="deepSubtitle"></div>
+      <div class="deep-section-title">Within</div>
+      <div class="deep-items" id="deepItems"></div>
+    </div>
+    <div class="deep-main">
+      <div class="deep-content" id="deepContent"></div>
+    </div>
+  </div>
   
-  <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.md" style="display:none">
+  <div id="dropText">release to offer</div>
+  <div id="message"></div>
+  <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.md">
 
 <script>
 // === CONFIG ===
@@ -374,206 +646,287 @@ const CONFIG = {
 
 // === STATE ===
 let particles = [];
-let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 let collections = [];
 let documents = [];
 let collectionMembers = {};
+let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 let hoveredParticle = null;
+let focusedParticle = null;
 let selectedParticle = null;
+let hoverTime = 0;
 let isDeepOpen = false;
-let isInvokeOpen = false;
+let isInvoking = false;
+let searchQuery = '';
+let currentDeepDoc = null;
 
-// === PARTICLE CLASS ===
+// === PARTICLE ===
 class Particle {
   constructor(data, type) {
     this.id = data.id;
-    this.name = data.name;
-    this.type = type; // 'collection' or 'document'
+    this.name = data.name || 'Untitled';
+    this.type = type;
     this.data = data;
     
-    // Position - start from center
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    this.x = cx + (Math.random() - 0.5) * 100;
-    this.y = cy + (Math.random() - 0.5) * 100;
+    // Stable home position (calculated once)
+    this.homeX = 0;
+    this.homeY = 0;
     
-    // Target position (will be calculated)
-    this.tx = this.x;
-    this.ty = this.y;
+    // Current position
+    this.x = window.innerWidth / 2;
+    this.y = window.innerHeight / 2;
     
     // Velocity
-    this.vx = 0;
-    this.vy = 0;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = (Math.random() - 0.5) * 2;
     
-    // Visual properties from metadata
-    this.baseSize = type === 'collection' ? 6 : 3;
-    this.size = this.baseSize;
+    // Visual properties
+    this.baseRadius = type === 'collection' ? 8 : 4;
+    this.radius = this.baseRadius;
     
-    // Age affects opacity
-    const created = new Date(data.created_at || Date.now());
-    const age = (Date.now() - created) / (1000 * 60 * 60 * 24); // days
-    this.age = age;
-    this.baseAlpha = Math.max(0.3, 1 - (age / 365)); // fade over a year
-    this.alpha = this.baseAlpha;
+    // State
+    this.status = data.status || 'idle'; // idle, complete, incomplete, processing
+    this.memberCount = 0;
     
-    // Type affects color
-    if (type === 'collection') {
-      this.hue = 180; // teal
-      this.saturation = 30;
-    } else {
-      // Documents vary by type
-      const docType = data.type?.toLowerCase() || '';
-      if (docType.includes('checklist')) {
-        this.hue = 160; // green-ish
-        this.saturation = 40;
-      } else if (docType.includes('contract') || docType.includes('legal')) {
-        this.hue = 200; // blue-ish
-        this.saturation = 25;
-      } else {
-        this.hue = 40; // warm neutral
-        this.saturation = 15;
-      }
-    }
+    // Calculate visual properties from metadata
+    this.calculateVisuals();
     
-    // Breathing offset
-    this.breatheOffset = Math.random() * Math.PI * 2;
-    this.breatheSpeed = 0.5 + Math.random() * 0.5;
+    // Animation
+    this.phase = Math.random() * Math.PI * 2;
+    this.breatheSpeed = 0.3 + Math.random() * 0.4;
     
-    // Drift
-    this.driftAngle = Math.random() * Math.PI * 2;
-    this.driftSpeed = 0.1 + Math.random() * 0.2;
+    // Interaction state
+    this.attention = 0; // 0-1, how much attention this particle has
+    this.searchMatch = 0; // 0-1, how well it matches current search
     
-    // For collections - members
-    this.members = [];
-    
-    // Parent collection (for documents)
+    // Parent (for documents)
     this.parentId = null;
   }
   
-  update(time) {
-    // Breathing
-    const breathe = Math.sin(time * this.breatheSpeed + this.breatheOffset);
-    this.size = this.baseSize + breathe * (this.baseSize * 0.2);
+  calculateVisuals() {
+    // Age affects base opacity
+    const created = new Date(this.data.created_at || Date.now());
+    const ageInDays = (Date.now() - created) / (1000 * 60 * 60 * 24);
+    this.age = ageInDays;
+    this.baseAlpha = Math.max(0.25, 1 - ageInDays / 180); // fade over 6 months
     
-    // Drift
-    this.driftAngle += 0.001;
-    const driftX = Math.cos(this.driftAngle) * this.driftSpeed;
-    const driftY = Math.sin(this.driftAngle) * this.driftSpeed;
-    
-    // Attraction to cursor (attention field)
-    const dx = mouse.x - this.x;
-    const dy = mouse.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    
-    // Particles within attention radius are drawn toward cursor
-    const attentionRadius = 200;
-    if (dist < attentionRadius && dist > 0) {
-      const force = (1 - dist / attentionRadius) * 0.3;
-      this.vx += (dx / dist) * force;
-      this.vy += (dy / dist) * force;
-      
-      // Brighten when attended
-      this.alpha = Math.min(1, this.baseAlpha + (1 - dist / attentionRadius) * 0.5);
+    // Color based on type and status
+    if (this.type === 'collection') {
+      this.hue = 175;
+      this.sat = 35;
+      this.lit = 55;
     } else {
-      // Return to base alpha
-      this.alpha += (this.baseAlpha - this.alpha) * 0.05;
+      const docType = (this.data.type || '').toLowerCase();
+      if (docType.includes('checklist') || docType.includes('summary')) {
+        this.hue = 150;
+        this.sat = 40;
+        this.lit = 50;
+      } else if (docType.includes('contract') || docType.includes('agreement')) {
+        this.hue = 200;
+        this.sat = 30;
+        this.lit = 50;
+      } else if (docType.includes('id') || docType.includes('passport')) {
+        this.hue = 40;
+        this.sat = 35;
+        this.lit = 55;
+      } else {
+        this.hue = 220;
+        this.sat = 15;
+        this.lit = 60;
+      }
+    }
+  }
+  
+  setHome(x, y) {
+    this.homeX = x;
+    this.homeY = y;
+  }
+  
+  update(time, dt) {
+    // Breathing
+    const breathe = Math.sin(time * this.breatheSpeed + this.phase);
+    
+    // Calculate target position
+    let targetX = this.homeX;
+    let targetY = this.homeY;
+    
+    // If searching, matching particles move toward center
+    if (searchQuery && this.searchMatch > 0) {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2 - 50;
+      targetX = cx + (this.homeX - cx) * (1 - this.searchMatch * 0.7);
+      targetY = cy + (this.homeY - cy) * (1 - this.searchMatch * 0.7);
     }
     
-    // Gravity toward parent (for documents in collections)
+    // Parent attraction for documents
     if (this.parentId && this.type === 'document') {
       const parent = particles.find(p => p.id === this.parentId);
       if (parent) {
-        const pdx = parent.x - this.x;
-        const pdy = parent.y - this.y;
-        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
-        if (pdist > 50) {
-          this.vx += (pdx / pdist) * 0.1;
-          this.vy += (pdy / pdist) * 0.1;
-        }
+        // Orbit around parent
+        const orbitRadius = 60 + (particles.filter(p => p.parentId === this.parentId).indexOf(this)) * 20;
+        const orbitAngle = time * 0.1 + this.phase;
+        targetX = parent.x + Math.cos(orbitAngle) * orbitRadius;
+        targetY = parent.y + Math.sin(orbitAngle) * orbitRadius;
       }
     }
     
-    // Move toward target with easing
-    this.vx += (this.tx - this.x) * 0.01;
-    this.vy += (this.ty - this.y) * 0.01;
+    // Attention attraction (cursor pulls nearby particles gently)
+    const dx = mouse.x - this.x;
+    const dy = mouse.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const attentionRadius = 150;
     
-    // Add drift
-    this.vx += driftX * 0.1;
-    this.vy += driftY * 0.1;
+    if (dist < attentionRadius && dist > 0) {
+      this.attention = Math.min(1, this.attention + dt * 2);
+      const pull = (1 - dist / attentionRadius) * 0.15 * this.attention;
+      this.vx += (dx / dist) * pull;
+      this.vy += (dy / dist) * pull;
+    } else {
+      this.attention = Math.max(0, this.attention - dt * 3);
+    }
     
-    // Friction
-    this.vx *= 0.95;
-    this.vy *= 0.95;
+    // Move toward target
+    const homeForce = 0.02;
+    this.vx += (targetX - this.x) * homeForce;
+    this.vy += (targetY - this.y) * homeForce;
+    
+    // Small drift
+    this.vx += Math.sin(time + this.phase) * 0.02;
+    this.vy += Math.cos(time * 0.7 + this.phase) * 0.02;
+    
+    // Damping
+    this.vx *= 0.94;
+    this.vy *= 0.94;
     
     // Apply velocity
     this.x += this.vx;
     this.y += this.vy;
     
-    // Bounds (soft)
-    const margin = 100;
-    if (this.x < margin) this.vx += 0.5;
-    if (this.x > window.innerWidth - margin) this.vx -= 0.5;
-    if (this.y < margin) this.vy += 0.5;
-    if (this.y > window.innerHeight - margin) this.vy -= 0.5;
+    // Calculate current radius (breathing + attention)
+    this.radius = this.baseRadius * (1 + breathe * 0.15 + this.attention * 0.3 + this.searchMatch * 0.5);
+    
+    // Calculate alpha (base + attention + search)
+    this.alpha = this.baseAlpha + this.attention * 0.4 + this.searchMatch * 0.3;
+    this.alpha = Math.min(1, this.alpha);
+    
+    // If not matching search, fade
+    if (searchQuery && this.searchMatch === 0) {
+      this.alpha *= 0.2;
+    }
   }
   
   draw(ctx) {
+    // Status ring for collections
+    if (this.type === 'collection' && this.status !== 'idle') {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
+      let ringColor;
+      if (this.status === 'complete') ringColor = `rgba(122, 196, 146, ${this.alpha * 0.3})`;
+      else if (this.status === 'incomplete') ringColor = `rgba(196, 154, 122, ${this.alpha * 0.3})`;
+      else if (this.status === 'processing') ringColor = `rgba(154, 122, 196, ${this.alpha * 0.3})`;
+      ctx.strokeStyle = ringColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    
     // Glow
+    const glowRadius = this.radius * (3 + this.attention * 2);
     const gradient = ctx.createRadialGradient(
       this.x, this.y, 0,
-      this.x, this.y, this.size * 4
+      this.x, this.y, glowRadius
     );
-    gradient.addColorStop(0, `hsla(${this.hue}, ${this.saturation}%, 70%, ${this.alpha * 0.3})`);
+    gradient.addColorStop(0, `hsla(${this.hue}, ${this.sat}%, ${this.lit}%, ${this.alpha * 0.4})`);
     gradient.addColorStop(1, 'transparent');
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
     ctx.fill();
     
     // Core
-    ctx.fillStyle = `hsla(${this.hue}, ${this.saturation}%, 80%, ${this.alpha})`;
+    ctx.fillStyle = `hsla(${this.hue}, ${this.sat}%, ${this.lit}%, ${this.alpha})`;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  containsPoint(x, y) {
-    const dx = x - this.x;
-    const dy = y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    return dist < Math.max(20, this.size * 3);
+  containsPoint(px, py) {
+    const dx = px - this.x;
+    const dy = py - this.y;
+    return Math.sqrt(dx * dx + dy * dy) < Math.max(24, this.radius * 2);
+  }
+  
+  matchesQuery(query) {
+    if (!query) return 0;
+    const q = query.toLowerCase();
+    const name = this.name.toLowerCase();
+    if (name === q) return 1;
+    if (name.startsWith(q)) return 0.8;
+    if (name.includes(q)) return 0.5;
+    return 0;
   }
 }
 
 // === CANVAS ===
 const canvas = document.getElementById('field');
 const ctx = canvas.getContext('2d');
+let lastTime = performance.now();
 
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  distributeParticles();
+  calculateLayout();
+}
+
+function calculateLayout() {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2 - 40;
+  
+  // Collections in a gentle arc/cluster
+  const collectionParticles = particles.filter(p => p.type === 'collection');
+  const docParticles = particles.filter(p => p.type === 'document' && !p.parentId);
+  
+  // Collections spread in upper area
+  const colRadius = Math.min(300, window.innerWidth * 0.25);
+  collectionParticles.forEach((p, i) => {
+    const angle = (i / Math.max(1, collectionParticles.length)) * Math.PI - Math.PI / 2;
+    const jitter = (Math.random() - 0.5) * 30;
+    p.setHome(
+      cx + Math.cos(angle) * (colRadius + jitter),
+      cy + Math.sin(angle) * (colRadius * 0.6 + jitter) - 50
+    );
+  });
+  
+  // Orphan documents in outer ring
+  const docRadius = Math.min(400, window.innerWidth * 0.35);
+  docParticles.forEach((p, i) => {
+    const angle = (i / Math.max(1, docParticles.length)) * Math.PI * 2;
+    const jitter = (Math.random() - 0.5) * 50;
+    p.setHome(
+      cx + Math.cos(angle) * (docRadius + jitter),
+      cy + Math.sin(angle) * (docRadius + jitter)
+    );
+  });
 }
 
 window.addEventListener('resize', resize);
 
 // === ANIMATION ===
-let animationTime = 0;
-
-function animate() {
-  animationTime += 0.016;
+function animate(currentTime) {
+  const dt = Math.min(0.1, (currentTime - lastTime) / 1000);
+  lastTime = currentTime;
+  const time = currentTime / 1000;
   
-  // Clear with fade (creates trails)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+  // Clear
+  ctx.fillStyle = 'rgba(5, 5, 6, 0.2)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Draw connections between related particles
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+  // Draw connections (documents to parents)
   ctx.lineWidth = 1;
   particles.forEach(p => {
-    if (p.type === 'document' && p.parentId) {
+    if (p.parentId && p.type === 'document') {
       const parent = particles.find(pp => pp.id === p.parentId);
       if (parent) {
+        const alpha = Math.min(p.alpha, parent.alpha) * 0.15;
+        ctx.strokeStyle = `rgba(228, 226, 223, ${alpha})`;
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(parent.x, parent.y);
@@ -584,49 +937,75 @@ function animate() {
   
   // Update and draw particles
   particles.forEach(p => {
-    p.update(animationTime);
+    p.searchMatch = p.matchesQuery(searchQuery);
+    p.update(time, dt);
     p.draw(ctx);
   });
   
   // Check hover
-  checkHover();
+  updateHover();
   
   requestAnimationFrame(animate);
 }
 
-function checkHover() {
+function updateHover() {
   let found = null;
+  let closest = Infinity;
   
-  // Check in reverse (top particles first)
-  for (let i = particles.length - 1; i >= 0; i--) {
-    if (particles[i].containsPoint(mouse.x, mouse.y)) {
-      found = particles[i];
-      break;
+  particles.forEach(p => {
+    if (p.containsPoint(mouse.x, mouse.y)) {
+      const dist = Math.sqrt((p.x - mouse.x) ** 2 + (p.y - mouse.y) ** 2);
+      if (dist < closest) {
+        closest = dist;
+        found = p;
+      }
     }
-  }
+  });
   
   if (found !== hoveredParticle) {
     hoveredParticle = found;
-    updatePresence();
-    updateWhisper();
+    hoverTime = 0;
+    updateReveal();
+    document.body.classList.toggle('hovering', found !== null);
+  } else if (hoveredParticle) {
+    hoverTime += 16;
+    if (hoverTime > 500 && focusedParticle !== hoveredParticle) {
+      focusedParticle = hoveredParticle;
+      document.body.classList.add('focusing');
+    }
+  }
+  
+  if (!hoveredParticle) {
+    focusedParticle = null;
+    document.body.classList.remove('focusing');
   }
 }
 
-function updatePresence() {
-  const presence = document.getElementById('presence');
-  presence.classList.toggle('hovering', hoveredParticle !== null);
-}
-
-function updateWhisper() {
-  const whisper = document.getElementById('whisper');
+function updateReveal() {
+  const reveal = document.getElementById('reveal');
   
   if (hoveredParticle) {
-    whisper.textContent = hoveredParticle.name;
-    whisper.style.left = hoveredParticle.x + 'px';
-    whisper.style.top = (hoveredParticle.y - 60) + 'px';
-    whisper.classList.add('visible');
+    const p = hoveredParticle;
+    document.getElementById('revealName').textContent = p.name;
+    
+    let meta = '';
+    if (p.type === 'collection') {
+      const memberCount = collectionMembers[p.id]?.length || 0;
+      if (p.status !== 'idle') {
+        meta = `<span class="reveal-status ${p.status}"></span>`;
+      }
+      meta += memberCount + ' within';
+    } else {
+      const age = Math.floor(p.age);
+      meta = age === 0 ? 'today' : age === 1 ? 'yesterday' : age + ' days ago';
+    }
+    document.getElementById('revealMeta').innerHTML = meta;
+    
+    reveal.style.left = p.x + 'px';
+    reveal.style.top = (p.y - p.radius - 40) + 'px';
+    reveal.classList.add('visible');
   } else {
-    whisper.classList.remove('visible');
+    reveal.classList.remove('visible');
   }
 }
 
@@ -642,12 +1021,17 @@ document.addEventListener('mousemove', e => {
 
 document.addEventListener('click', e => {
   if (isDeepOpen) {
-    closeDeep();
+    // Check if clicking the close button or outside main content
+    if (e.target.closest('.deep-close')) {
+      closeDeep();
+    }
     return;
   }
   
   if (hoveredParticle) {
     openParticle(hoveredParticle);
+  } else if (isInvoking) {
+    // Don't close invoke on click
   }
 });
 
@@ -659,179 +1043,209 @@ document.addEventListener('keydown', e => {
   }
   
   if (e.key === 'Escape') {
-    if (isInvokeOpen) {
-      closeInvoke();
-    }
+    closeInvoke();
     return;
   }
   
-  // Any letter/number key opens invoke
-  if (!isInvokeOpen && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+  // Any printable character opens invoke
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
     openInvoke(e.key);
     e.preventDefault();
   }
 });
 
-function openInvoke(initialChar = '') {
-  isInvokeOpen = true;
-  const invoke = document.getElementById('invoke');
+function openInvoke(initial = '') {
+  isInvoking = true;
+  document.body.classList.add('invoking');
+  
   const input = document.getElementById('invokeInput');
-  invoke.classList.add('active');
-  document.getElementById('hint').classList.add('hidden');
-  input.value = initialChar;
+  input.value = initial;
   input.focus();
   
-  input.onkeydown = e => {
-    if (e.key === 'Enter') {
-      handleInvoke(input.value);
-      closeInvoke();
-    } else if (e.key === 'Escape') {
-      closeInvoke();
-    }
-  };
+  searchQuery = initial.toLowerCase();
 }
 
 function closeInvoke() {
-  isInvokeOpen = false;
-  const invoke = document.getElementById('invoke');
+  isInvoking = false;
+  document.body.classList.remove('invoking');
+  
   const input = document.getElementById('invokeInput');
-  invoke.classList.remove('active');
-  document.getElementById('hint').classList.remove('hidden');
   input.value = '';
   input.blur();
+  
+  searchQuery = '';
 }
 
-function handleInvoke(text) {
-  const lower = text.toLowerCase().trim();
-  
-  if (!lower) return;
-  
-  if (lower.includes('new') || lower.includes('create')) {
-    createCollection(lower.replace(/new|create|collection/g, '').trim() || 'Untitled');
-  } else {
-    // Search particles
-    const match = particles.find(p => 
-      p.name.toLowerCase().includes(lower)
-    );
-    if (match) {
-      // Zoom to particle
-      match.tx = window.innerWidth / 2;
-      match.ty = window.innerHeight / 2;
-      setTimeout(() => openParticle(match), 500);
-    } else {
-      showMessage('nothing surfaces for "' + lower + '"');
+document.getElementById('invokeInput').addEventListener('input', e => {
+  searchQuery = e.target.value.toLowerCase();
+});
+
+document.getElementById('invokeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const query = e.target.value.trim();
+    
+    if (!query) {
+      closeInvoke();
+      return;
     }
+    
+    // Check for commands
+    const lower = query.toLowerCase();
+    if (lower.startsWith('new ') || lower === 'new') {
+      const name = query.slice(4).trim() || 'Untitled';
+      createCollection(name);
+      closeInvoke();
+      return;
+    }
+    
+    // Find best matching particle
+    const matches = particles
+      .map(p => ({ p, score: p.matchesQuery(query) }))
+      .filter(m => m.score > 0)
+      .sort((a, b) => b.score - a.score);
+    
+    if (matches.length > 0) {
+      closeInvoke();
+      setTimeout(() => openParticle(matches[0].p), 200);
+    } else {
+      showMessage('nothing surfaces');
+    }
+  } else if (e.key === 'Escape') {
+    closeInvoke();
   }
-}
+});
 
-// === PARTICLE INTERACTION ===
+// === DEEP VIEW ===
 async function openParticle(particle) {
   selectedParticle = particle;
   isDeepOpen = true;
   
-  const presence = document.getElementById('presence');
-  presence.classList.add('focused');
-  
   const deep = document.getElementById('deep');
-  const content = document.getElementById('deepContent');
+  document.getElementById('deepTitle').textContent = particle.name;
+  document.getElementById('deepSubtitle').textContent = particle.type === 'collection' ? 'collection' : 'document';
+  document.getElementById('deepContent').innerHTML = '<p style="color: var(--light-15); font-style: italic;">surfacing...</p>';
+  document.getElementById('deepItems').innerHTML = '';
   
-  content.innerHTML = '<p style="color: rgba(255,255,255,0.3); font-style: italic;">surfacing...</p>';
   deep.classList.add('open');
   
   if (particle.type === 'collection') {
-    await loadCollectionView(particle);
+    await loadCollectionDeep(particle);
   } else {
-    await loadDocumentView(particle);
+    await loadDocumentDeep(particle);
   }
-  
-  presence.classList.remove('focused');
 }
 
-async function loadCollectionView(particle) {
-  const content = document.getElementById('deepContent');
-  
+async function loadCollectionDeep(particle) {
   try {
-    // Load members
-    const memberIds = await loadCollectionMembers(particle.id);
+    const memberIds = await loadCollectionMembersData(particle.id);
     const docs = documents.filter(d => memberIds.includes(d.id));
     
-    // Find checklist
-    let checklistDoc = null;
-    for (const doc of docs) {
-      if (doc.name.toLowerCase().includes('checklist') || doc.source?.endsWith('.md')) {
-        checklistDoc = doc;
-        break;
-      }
+    // Render sidebar items
+    const itemsEl = document.getElementById('deepItems');
+    if (docs.length === 0) {
+      itemsEl.innerHTML = '<div style="padding: 12px; color: var(--light-15); font-size: 11px; font-style: italic;">nothing within</div>';
+    } else {
+      itemsEl.innerHTML = docs.map((d, i) => `
+        <div class="deep-item ${i === 0 ? 'active' : ''}" data-id="${d.id}" onclick="loadDeepDoc('${d.id}')">
+          <div class="deep-item-dot"></div>
+          <div class="deep-item-name">${d.name}</div>
+        </div>
+      `).join('');
     }
     
-    if (checklistDoc) {
-      const docContent = await fetchDocContent(checklistDoc.source);
-      content.innerHTML = marked.parse(docContent);
-      styleContent(content);
+    // Find and show checklist or first doc
+    let primaryDoc = docs.find(d => 
+      d.name.toLowerCase().includes('checklist') || 
+      d.source?.endsWith('.md')
+    ) || docs[0];
+    
+    if (primaryDoc) {
+      await loadDeepDoc(primaryDoc.id);
     } else {
-      content.innerHTML = `
+      document.getElementById('deepContent').innerHTML = `
         <h1>${particle.name}</h1>
-        <p>${docs.length} documents within this field</p>
-        <p style="margin-top: 40px; color: rgba(255,255,255,0.3);">offer documents to generate awareness</p>
+        <p style="color: var(--light-30);">This field is empty. Drop documents to populate it.</p>
       `;
     }
   } catch (err) {
-    content.innerHTML = '<p style="color: rgba(200,140,140,0.8);">could not surface</p>';
+    document.getElementById('deepContent').innerHTML = '<p style="color: var(--incomplete);">could not surface</p>';
   }
 }
 
-async function loadDocumentView(particle) {
-  const content = document.getElementById('deepContent');
+async function loadDocumentDeep(particle) {
+  document.getElementById('deepItems').innerHTML = '';
   
   try {
-    const docContent = await fetchDocContent(particle.data.source);
-    content.innerHTML = marked.parse(docContent);
-    styleContent(content);
+    const content = await fetchDocContent(particle.data.source);
+    document.getElementById('deepContent').innerHTML = marked.parse(content);
+    styleDeepContent();
   } catch (err) {
-    content.innerHTML = '<p style="color: rgba(200,140,140,0.8);">could not surface</p>';
+    document.getElementById('deepContent').innerHTML = '<p style="color: var(--incomplete);">could not surface</p>';
   }
 }
 
-function styleContent(container) {
+window.loadDeepDoc = async function(docId) {
+  currentDeepDoc = docId;
+  
+  // Update active state
+  document.querySelectorAll('.deep-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === docId);
+  });
+  
+  const doc = documents.find(d => d.id === docId);
+  if (!doc) return;
+  
+  try {
+    document.getElementById('deepContent').innerHTML = '<p style="color: var(--light-15); font-style: italic;">surfacing...</p>';
+    const content = await fetchDocContent(doc.source);
+    document.getElementById('deepContent').innerHTML = marked.parse(content);
+    styleDeepContent();
+  } catch (err) {
+    document.getElementById('deepContent').innerHTML = '<p style="color: var(--incomplete);">could not surface</p>';
+  }
+};
+
+function styleDeepContent() {
+  const container = document.getElementById('deepContent');
   container.querySelectorAll('td').forEach(td => {
     const text = td.textContent.trim().toLowerCase();
-    if (text === 'complete') td.classList.add('complete');
-    else if (text === 'incomplete') td.classList.add('incomplete');
-    else if (text === 'partial') td.classList.add('partial');
+    if (text === 'complete') td.classList.add('status-complete');
+    else if (text === 'incomplete') td.classList.add('status-incomplete');
+    else if (text === 'partial') td.classList.add('status-partial');
   });
 }
 
 function closeDeep() {
   isDeepOpen = false;
   selectedParticle = null;
+  currentDeepDoc = null;
   document.getElementById('deep').classList.remove('open');
 }
 
 // === DRAG & DROP ===
-let dragCounter = 0;
+let dragCount = 0;
 
 document.addEventListener('dragenter', e => {
   e.preventDefault();
-  dragCounter++;
-  document.body.classList.add('drop-active');
+  dragCount++;
+  document.body.classList.add('dropping');
 });
 
 document.addEventListener('dragleave', e => {
   e.preventDefault();
-  dragCounter--;
-  if (dragCounter === 0) {
-    document.body.classList.remove('drop-active');
+  dragCount--;
+  if (dragCount === 0) {
+    document.body.classList.remove('dropping');
   }
 });
 
-document.addEventListener('dragover', e => {
-  e.preventDefault();
-});
+document.addEventListener('dragover', e => e.preventDefault());
 
 document.addEventListener('drop', e => {
   e.preventDefault();
-  dragCounter = 0;
-  document.body.classList.remove('drop-active');
+  dragCount = 0;
+  document.body.classList.remove('dropping');
   
   const files = Array.from(e.dataTransfer.files);
   if (files.length) processFiles(files);
@@ -882,13 +1296,14 @@ async function loadDocuments() {
     .map(o => ({
       id: o.id,
       name: o.name || 'Untitled',
-      type: o.properties?.document_type || 'Document',
+      type: o.properties?.document_type || '',
       created_at: o.created_at,
-      source: o.content?.source
+      source: o.content?.source,
+      status: o.properties?.status || 'idle'
     }));
 }
 
-async function loadCollectionMembers(colId) {
+async function loadCollectionMembersData(colId) {
   if (collectionMembers[colId]) return collectionMembers[colId];
   const members = await api(`/collections/${colId}/members?limit=1000`);
   collectionMembers[colId] = (members || []).map(m => m.id || m);
@@ -906,30 +1321,27 @@ async function fetchDocContent(source) {
 
 async function createCollection(name) {
   try {
+    showMessage('forming...');
     const jwt = await getAuthToken();
     const res = await fetch(`${CONFIG.API_BASE}/collections`, {
       method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${jwt}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({ name: name.trim(), description: '', dynamic: false })
+      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description: '', dynamic: false })
     });
     
     if (res.ok) {
       const col = await res.json();
       collections.push(col);
       
-      // Add particle
       const p = new Particle(col, 'collection');
-      p.tx = window.innerWidth / 2 + (Math.random() - 0.5) * 300;
-      p.ty = window.innerHeight / 2 + (Math.random() - 0.5) * 300;
       particles.push(p);
+      calculateLayout();
       
-      showMessage('"' + name + '" emerges');
+      showMessage(`"${name}" emerges`);
+      updateEmpty();
     }
   } catch (err) {
-    showMessage('could not create');
+    showMessage('could not form');
   }
 }
 
@@ -940,7 +1352,7 @@ async function processFiles(files) {
 }
 
 async function processFile(file) {
-  showMessage('offering ' + file.name + '...');
+  showMessage(`receiving ${file.name}...`);
   
   const mimeType = file.type || getMimeType(file.name);
   
@@ -960,10 +1372,7 @@ async function processFile(file) {
     
     const createRes = await fetch(`${CONFIG.API_BASE}/objects`, {
       method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${jwt}`, 
-        'Content-Type': 'application/json' 
-      },
+      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: file.name,
         content: { source: uploadRes.id, type: mimeType, name: file.name }
@@ -972,33 +1381,30 @@ async function processFile(file) {
     
     const obj = await createRes.json();
     
-    // Add to documents
     const doc = {
       id: obj.id,
       name: file.name,
-      type: 'Document',
+      type: '',
       created_at: new Date().toISOString(),
-      source: uploadRes.id
+      source: uploadRes.id,
+      status: 'processing'
     };
     documents.push(doc);
     
-    // Create particle
+    // Create particle at mouse position
     const p = new Particle(doc, 'document');
     p.x = mouse.x;
     p.y = mouse.y;
-    p.tx = window.innerWidth / 2 + (Math.random() - 0.5) * 400;
-    p.ty = window.innerHeight / 2 + (Math.random() - 0.5) * 400;
+    p.status = 'processing';
     particles.push(p);
+    calculateLayout();
     
-    // Process with agent
+    // Send to agent
     const targetCollection = selectedParticle?.type === 'collection' ? selectedParticle.id : 'NEW';
     
     await fetch(`${CONFIG.API_BASE}/execute/async`, {
       method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${jwt}`, 
-        'Content-Type': 'application/json' 
-      },
+      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type: 'conversation',
         interaction: CONFIG.INTERACTION,
@@ -1012,11 +1418,17 @@ async function processFile(file) {
       })
     });
     
-    showMessage(file.name + ' surfaces');
+    // Update particle status after a delay (simulating processing)
+    setTimeout(() => {
+      p.status = 'idle';
+      showMessage(`${file.name} surfaces`);
+    }, 2000);
+    
+    updateEmpty();
     
   } catch (err) {
     console.error(err);
-    showMessage('could not offer ' + file.name);
+    showMessage(`could not receive ${file.name}`);
   }
 }
 
@@ -1035,72 +1447,61 @@ function getMimeType(filename) {
   return types[ext] || 'application/octet-stream';
 }
 
-// === PARTICLES DISTRIBUTION ===
-function distributeParticles() {
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
-  
-  // Collections in inner ring
-  const collectionParticles = particles.filter(p => p.type === 'collection');
-  const docParticles = particles.filter(p => p.type === 'document');
-  
-  const innerRadius = Math.min(window.innerWidth, window.innerHeight) * 0.2;
-  const outerRadius = Math.min(window.innerWidth, window.innerHeight) * 0.35;
-  
-  collectionParticles.forEach((p, i) => {
-    const angle = (i / collectionParticles.length) * Math.PI * 2 - Math.PI / 2;
-    p.tx = cx + Math.cos(angle) * innerRadius + (Math.random() - 0.5) * 50;
-    p.ty = cy + Math.sin(angle) * innerRadius + (Math.random() - 0.5) * 50;
-  });
-  
-  docParticles.forEach((p, i) => {
-    const angle = (i / docParticles.length) * Math.PI * 2;
-    p.tx = cx + Math.cos(angle) * outerRadius + (Math.random() - 0.5) * 100;
-    p.ty = cy + Math.sin(angle) * outerRadius + (Math.random() - 0.5) * 100;
-  });
+// === HELPERS ===
+function showMessage(text) {
+  const msg = document.getElementById('message');
+  msg.textContent = text;
+  msg.classList.add('visible');
+  setTimeout(() => msg.classList.remove('visible'), 2500);
+}
+
+function updateEmpty() {
+  const empty = document.getElementById('empty');
+  empty.classList.toggle('visible', particles.length === 0);
 }
 
 function buildParticles() {
   particles = [];
   
-  // Collections as larger particles
   collections.forEach(col => {
-    particles.push(new Particle(col, 'collection'));
+    const p = new Particle(col, 'collection');
+    particles.push(p);
   });
   
-  // Documents as smaller particles
   documents.forEach(doc => {
-    particles.push(new Particle(doc, 'document'));
+    const p = new Particle(doc, 'document');
+    particles.push(p);
   });
   
-  distributeParticles();
-  
-  // Link documents to collections
+  calculateLayout();
   linkParticles();
+  updateEmpty();
 }
 
 async function linkParticles() {
-  // Load all collection members and link documents
   for (const col of collections) {
     try {
-      const memberIds = await loadCollectionMembers(col.id);
+      const memberIds = await loadCollectionMembersData(col.id);
+      
+      // Update collection status based on members
+      const colParticle = particles.find(p => p.id === col.id);
+      if (colParticle) {
+        colParticle.memberCount = memberIds.length;
+        // Could set status based on completeness logic
+      }
+      
+      // Link documents to collections
       particles.forEach(p => {
         if (p.type === 'document' && memberIds.includes(p.id)) {
           p.parentId = col.id;
         }
       });
     } catch (err) {
-      // Ignore errors
+      // Ignore
     }
   }
-}
-
-// === MESSAGES ===
-function showMessage(text) {
-  const msg = document.getElementById('message');
-  msg.textContent = text;
-  msg.classList.add('visible');
-  setTimeout(() => msg.classList.remove('visible'), 3000);
+  
+  calculateLayout();
 }
 
 // === INIT ===
@@ -1111,16 +1512,21 @@ async function init() {
     await loadCollections();
     await loadDocuments();
     buildParticles();
+    
+    document.getElementById('contextDot').classList.remove('offline');
+    document.getElementById('contextText').textContent = 'connected';
   } catch (err) {
     console.error('Init failed:', err);
+    document.getElementById('contextDot').classList.add('offline');
+    document.getElementById('contextText').textContent = 'offline';
     showMessage('could not connect');
   }
   
   setTimeout(() => {
     document.getElementById('loading').classList.add('hidden');
-  }, 800);
+  }, 600);
   
-  animate();
+  requestAnimationFrame(animate);
 }
 
 init();

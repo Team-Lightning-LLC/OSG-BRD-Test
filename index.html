@@ -458,6 +458,22 @@
     
     .card-badge.ready { background: var(--success-soft); color: var(--success); }
     .card-badge.processing { background: var(--accent-soft); color: var(--accent); }
+    .card-badge.setting-up { background: var(--warning-soft); color: #b8860b; }
+    
+    .collection-card.setting-up {
+      border-color: var(--warning);
+      opacity: 0.85;
+      cursor: wait;
+    }
+    
+    .card-icon-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--warning);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
     
     /* Card Dropdown Menu */
     .card-dropdown {
@@ -919,6 +935,7 @@
     
     .toast.success { background: var(--success); }
     .toast.error { background: #dc3545; }
+    .toast.warning { background: var(--warning); color: #333; }
     
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
@@ -1234,7 +1251,7 @@
       <button class="auth-btn" onclick="attemptLogin()">Continue</button>
       <p class="auth-error" id="authError">Invalid access code. Please try again.</p>
       <div class="https-warning" id="httpsWarning">
-        ⚠️ This page is not using HTTPS. Data transmission may not be secure.
+        âš ï¸ This page is not using HTTPS. Data transmission may not be secure.
       </div>
       <div class="security-badge">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -1457,14 +1474,14 @@
  * 
  * CURRENT POC SECURITY FEATURES:
  * ------------------------------
- * ✓ Password gate (visual deterrent, not true security)
- * ✓ HTTPS detection and warning
- * ✓ Content Security Policy headers
- * ✓ X-Frame-Options (clickjacking protection)
- * ✓ Session timeout (30 min inactivity)
- * ✓ Input sanitization for filenames
- * ✓ Removed sensitive console.log statements
- * ✓ Logout functionality clears tokens
+ * âœ“ Password gate (visual deterrent, not true security)
+ * âœ“ HTTPS detection and warning
+ * âœ“ Content Security Policy headers
+ * âœ“ X-Frame-Options (clickjacking protection)
+ * âœ“ Session timeout (30 min inactivity)
+ * âœ“ Input sanitization for filenames
+ * âœ“ Removed sensitive console.log statements
+ * âœ“ Logout functionality clears tokens
  * 
  * =========================================================================
  */
@@ -1493,7 +1510,11 @@ const CONFIG = {
   AUTH_BASE: 'https://api.vertesia.io',
   // NOTE FOR IT: This should be moved to a backend proxy in production
   API_KEY: 'sk-cf3c2d29bc38bfee2ae95bf107cb9046',
-  INTERACTION: 'PathB'
+  INTERACTION: 'PathB',
+  // Populate new collection agent
+  POPULATE_INTERACTION: 'PopulateNewCollection',
+  BLANK_CHECKLIST_ID: '6977a920e2e01f52d0fa2b49',
+  BLANK_PROGRESS_ID: '6977a92034ea6462160b9002'
 };
 
 // ===== STATE =====
@@ -1508,6 +1529,7 @@ let menuTargetCollection = null;
 let sessionTimer = null;
 let warningTimer = null;
 let isAuthenticated = false;
+let settingUpCollections = new Set(); // Track collections being populated with blank templates
 
 // Persisted state
 const PINNED_KEY = 'osg_pinned_collections';
@@ -1809,11 +1831,12 @@ function renderCollections() {
     const isActive = selectedCollection?.id === col.id;
     const isPinned = pinnedCollections.has(col.id);
     const isComplete = completedCollections.has(col.id);
+    const isSettingUp = settingUpCollections.has(col.id);
     const jobs = processingJobs.filter(j => j.collectionId === col.id && j.status === 'processing');
     
     html += `
-      <div class="collection-card ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}" 
-           onclick="selectCollection('${col.id}')" data-id="${col.id}">
+      <div class="collection-card ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''} ${isSettingUp ? 'setting-up' : ''}" 
+           onclick="${isSettingUp ? '' : `selectCollection('${col.id}')`}" data-id="${col.id}">
         <button class="card-pin ${isPinned ? 'active' : ''}" onclick="event.stopPropagation();togglePin('${col.id}')" title="Pin">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
         </button>
@@ -1822,14 +1845,20 @@ function renderCollections() {
         </button>
         <div class="card-header">
           <div class="card-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            ${isSettingUp 
+              ? '<div class="card-icon-spinner"></div>'
+              : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+            }
           </div>
           <div class="card-name" title="${col.name}">${col.name}</div>
         </div>
         <div class="card-meta">
           <span class="card-status ${isComplete ? 'complete' : 'active'}">${isComplete ? 'Complete' : 'Active'}</span>
         </div>
-        ${jobs.length > 0 ? `<span class="card-badge processing">${jobs.length} processing</span>` : ''}
+        ${isSettingUp ? '<span class="card-badge setting-up">Setting up...</span>' : ''}
+        ${!isSettingUp && jobs.length > 0 ? `<span class="card-badge processing">${jobs.length} processing</span>` : ''}
+      </div>
+    `;
       </div>
     `;
   });
@@ -1872,7 +1901,7 @@ function renderLibrary() {
       </div>
       <div class="library-item-info">
         <div class="library-item-name" title="${doc.name}">${doc.name}</div>
-        <div class="library-item-meta">${doc.date} · ${doc.type}</div>
+        <div class="library-item-meta">${doc.date} Â· ${doc.type}</div>
       </div>
       ${doc.processing ? '' : `
         <button class="library-item-delete" onclick="event.stopPropagation(); deleteDocument('${doc.id}')" title="Remove from collection">
@@ -1973,22 +2002,103 @@ async function createCollection() {
   const name = prompt('Enter collection name:');
   if (!name?.trim()) return;
   
+  let newCol = null;
+  
   try {
-    const col = await apiAuth('/collections', {
+    // Step 1: Create the collection
+    newCol = await apiAuth('/collections', {
       method: 'POST',
       body: JSON.stringify({ name: name.trim(), description: '', dynamic: false })
     });
     
-    if (col?.id) {
-      collections.unshift(col);
+    if (newCol?.id) {
+      collections.unshift(newCol);
+      settingUpCollections.add(newCol.id); // Mark as setting up
     } else {
       await loadCollections();
+      newCol = collections.find(c => c.name === name.trim());
+      if (newCol) settingUpCollections.add(newCol.id);
     }
     
     renderCollections();
-    showToast(`Created "${name}"`, 'success');
+    showToast(`Creating "${name}"...`, 'info');
+    
+    // Step 2: Call PopulateNewCollection agent to seed with blank templates
+    if (newCol?.id) {
+      await populateNewCollection(newCol.id, name.trim());
+    }
+    
   } catch (err) {
+    if (newCol?.id) settingUpCollections.delete(newCol.id);
+    renderCollections();
     showToast('Failed to create collection', 'error');
+  }
+}
+
+async function populateNewCollection(collectionId, collectionName) {
+  try {
+    // Get JWT for agent call
+    const jwtRes = await fetch(`${CONFIG.AUTH_BASE}/auth/token?token=${CONFIG.API_KEY}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${CONFIG.API_KEY}` }
+    });
+    if (!jwtRes.ok) throw new Error(`JWT failed: ${jwtRes.status}`);
+    const jwt = (await jwtRes.json()).token;
+    
+    // Call the PopulateNewCollection agent
+    const agentRes = await fetch(`${CONFIG.API_BASE}/execute/async`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        type: 'conversation',
+        interaction: CONFIG.POPULATE_INTERACTION,
+        data: { 
+          collection: collectionId,
+          checklist: CONFIG.BLANK_CHECKLIST_ID,
+          documents: CONFIG.BLANK_PROGRESS_ID
+        },
+        config: {
+          environment: '681915c6a01fb262a410c161',
+          model: 'publishers/anthropic/models/claude-sonnet-4'
+        },
+        interactive: true,
+        max_iterations: 50
+      })
+    });
+    
+    if (!agentRes.ok) {
+      const errText = await agentRes.text();
+      throw new Error(`Populate agent failed: ${agentRes.status} - ${errText}`);
+    }
+    
+    // Wait a moment for agent to complete, then refresh
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Refresh collection data
+    delete collectionMembers[collectionId]; // Clear cached members
+    await loadDocuments();
+    await loadCollectionMembers(collectionId);
+    
+    // Mark setup complete
+    settingUpCollections.delete(collectionId);
+    renderCollections();
+    
+    // Auto-select the new collection
+    const col = collections.find(c => c.id === collectionId);
+    if (col) {
+      await selectCollection(collectionId);
+    }
+    
+    showToast(`"${collectionName}" ready`, 'success');
+    
+  } catch (err) {
+    console.error('Populate collection error:', err);
+    settingUpCollections.delete(collectionId);
+    renderCollections();
+    showToast('Collection created (templates may need manual setup)', 'warning');
   }
 }
 
@@ -2200,7 +2310,7 @@ function renderDocumentPicker() {
         </div>
         <div class="picker-item-info">
           <div class="picker-item-name" title="${doc.name}">${doc.name}</div>
-          <div class="picker-item-meta">${doc.date} · ${doc.type}</div>
+          <div class="picker-item-meta">${doc.date} Â· ${doc.type}</div>
         </div>
         <div class="picker-item-action">
           ${inCollection 
@@ -2389,7 +2499,7 @@ async function processFile(file) {
 
     updateQueueStatus(queueId, 'Complete', 'complete');
     const targetName = selectedCollection ? selectedCollection.name : 'New Collection';
-    showToast(`${safeName} → ${targetName}`, 'success');
+    showToast(`${safeName} â†’ ${targetName}`, 'success');
 
   } catch (err) {
     updateQueueStatus(queueId, err.message, 'error');
@@ -2475,12 +2585,15 @@ function showToast(msg, type = 'info') {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `
-    ${type === 'success' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : 
-      type === 'error' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' :
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'}
-    <span>${msg}</span>
-  `;
+  
+  const icons = {
+    success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
+    error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    warning: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+  };
+  
+  toast.innerHTML = `${icons[type] || icons.info}<span>${msg}</span>`;
   container.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
